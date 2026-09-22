@@ -63,7 +63,7 @@ export function DataProvider({ children }) {
     const id = 'HD-' + (8842 + Math.floor(Math.random() * 40))
     setTickets((list) => [{
       id, status: 'Open', sla: '8h left', assignee: 'HR Ops',
-      raisedBy: 'Nikhil Tembhare', created: new Date().toISOString().slice(0, 10), ...t,
+      raisedBy: 'Current user', created: new Date().toISOString().slice(0, 10), ...t,
     }, ...list])
     return id
   }, [])
@@ -73,7 +73,7 @@ export function DataProvider({ children }) {
   }, [])
 
   const addAnnouncement = useCallback((a) => {
-    setAnnouncements((l) => [{ id: Date.now(), author: 'Nikhil Tembhare', date: new Date().toISOString().slice(0, 10), pinned: false, ...a }, ...l])
+    setAnnouncements((l) => [{ id: Date.now(), author: 'Current user', date: new Date().toISOString().slice(0, 10), pinned: false, ...a }, ...l])
   }, [])
 
   const addDocument = useCallback((d) => {

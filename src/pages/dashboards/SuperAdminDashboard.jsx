@@ -36,7 +36,7 @@ export default function SuperAdminDashboard() {
   return (
     <>
       <PageHeader
-        title={greeting + ', ' + String(user?.name || '').split(' ')[0]}
+        title={greeting + ', ' + (user?.shortName || String(user?.name || '').split(' ')[0])}
         subtitle="Super Admin console - platform, access and organisation health"
         actions={<Link to="/system" className="btn-primary"><ShieldCheck size={13} /> System admin</Link>}
       />

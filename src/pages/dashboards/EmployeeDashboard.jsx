@@ -21,7 +21,7 @@ export default function EmployeeDashboard() {
   return (
     <>
       <PageHeader
-        title={greeting + ', ' + String(user?.name || '').split(' ')[0]}
+        title={greeting + ', ' + (user?.shortName || String(user?.name || '').split(' ')[0])}
         subtitle={user?.designation + ' - ' + user?.department + ' - ' + user?.location}
       />
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PageHeader, Card, Tabs, Table, Badge, Field } from '../components/ui.jsx'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function Toggle({ on, onChange }) {
   return (
@@ -30,6 +31,7 @@ const LABELS = {
 
 export default function Settings() {
   const { toast } = useApp()
+  const { user } = useAuth()
   const [tab, setTab] = useState('Preferences')
   const [prefs, setPrefs] = useState({ email: true, push: false, digest: true, approvals: true, twoFactor: true })
   const set = (k) => (v) => {
@@ -62,7 +64,7 @@ export default function Settings() {
           </Card>
 
           <Card title="Session">
-            <Row title="Signed in as" desc="nikhil.tembhare@flexiloans.com"><Badge tone="green">Active</Badge></Row>
+            <Row title="Signed in as" desc={user.email + " - " + user.role}><Badge tone="green">Active</Badge></Row>
             <Row title="Last sign-in" desc="21 September 2026, 09:34 IST from Mumbai"><Badge tone="gray">Chrome / macOS</Badge></Row>
             <Row title="Password" desc="Last changed 4 months ago"><button className="btn-secondary" onClick={() => toast('Password reset sent', 'Check your inbox for the reset link', 'info')}>Change</button></Row>
             <Row title="Active sessions" desc="2 devices currently signed in"><button className="btn-danger" onClick={() => toast('Signed out everywhere', 'Other devices will need to sign in again', 'warning')}>Sign out all</button></Row>

@@ -4,12 +4,14 @@ import { PageHeader, Card, Table, Badge, Tabs, Progress, statusTone } from '../c
 import Modal from '../components/Modal.jsx'
 import { leaveBalances, holidays } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { downloadCSV } from '../lib/download.js'
 
 const BLANK = { type: 'Casual Leave', from: '', to: '', reason: '' }
 
 export default function Leave() {
   const { leaveRequests, addLeaveRequest, setLeaveStatus, toast, notify } = useApp()
+  const { user } = useAuth()
   const [tab, setTab] = useState('My requests')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -28,7 +30,7 @@ export default function Leave() {
     if (new Date(form.to) < new Date(form.from)) { setErr('The end date cannot be before the start date.'); return }
     const days = Math.max(1, Math.round((new Date(form.to) - new Date(form.from)) / 86400000) + 1)
     addLeaveRequest({
-      employee: 'Nikhil Tembhare', empId: 'FL1042', type: form.type,
+      employee: user.name, empId: user.id, type: form.type,
       from: form.from, to: form.to, days, reason: form.reason.trim() || 'Personal',
     })
     notify({ title: 'Leave request submitted', detail: days + ' day' + (days > 1 ? 's' : '') + ' of ' + form.type + ' sent to Aarti Deshmukh', to: '/leave', kind: 'leave' })
@@ -71,7 +73,7 @@ export default function Leave() {
     ) : <Badge tone={statusTone(r.status)}>{r.status}</Badge> },
   ]
 
-  const pending = leaveRequests.filter((r) => r.empId !== 'FL1042')
+  const pending = leaveRequests.filter((r) => r.empId !== user.id)
 
   return (
     <>

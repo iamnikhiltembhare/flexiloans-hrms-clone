@@ -3,10 +3,12 @@ import { Download, Wallet, TrendingUp, Receipt, PiggyBank } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, statusTone } from '../components/ui.jsx'
 import { payslips, salaryBreakup, INR } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { downloadFile, downloadCSV } from '../lib/download.js'
 
 export default function Payroll() {
   const { toast } = useApp()
+  const { user } = useAuth()
   const [tab, setTab] = useState('Payslips')
   const totalEarn = salaryBreakup.earnings.reduce((s, r) => s + r.monthly, 0)
   const totalDed = salaryBreakup.deductions.reduce((s, r) => s + r.monthly, 0)
@@ -15,8 +17,8 @@ export default function Payroll() {
     const line = (a, b) => a.padEnd(34) + String(b).padStart(14)
     return [
       'FLEXILOANS - PAYSLIP (demo)', '='.repeat(48), '',
-      'Employee   : Nikhil Tembhare (FL1042)',
-      'Designation: Senior Product Manager',
+      'Employee   : ' + user.name + ' (' + user.id + ')',
+      'Designation: ' + user.designation,
       'Pay period : ' + p.month, 'Pay date   : ' + p.date, '',
       'EARNINGS', '-'.repeat(48),
       ...salaryBreakup.earnings.map((r) => line(r.head, INR(r.monthly))),
@@ -37,7 +39,7 @@ export default function Payroll() {
   const getForm16 = () => {
     downloadFile('form-16-fy-2025-26.txt', [
       'FLEXILOANS - FORM 16 SUMMARY (demo)', '='.repeat(48), '',
-      'Employee : Nikhil Tembhare (FL1042)', 'PAN      : ABKPT****J',
+      'Employee : ' + user.name + ' (' + user.id + ')', 'PAN      : ' + user.pan,
       'Assessment year: 2026-27', '',
       'Gross salary        : ' + INR(totalEarn * 12),
       'Total deductions    : ' + INR(totalDed * 12),

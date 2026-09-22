@@ -17,7 +17,7 @@ npm run preview  # serve the production build
 
 | Role | Username | Password | Access |
 |------|----------|----------|--------|
-| Super Admin | `nikhil.tembhare` | `demo1234` | Everything, including organisation settings and System Admin |
+| Super Admin | `admin` | `Admin@2026` | Everything, including organisation settings and System Admin |
 | HR Professional | `hr.manager` | `FlexiHR@2026` | Self-service + Employees, Recruitment, Helpdesk, Reports |
 | Employee | `rohan.sharma` | `FlexiEmp@2026` | Self-service only - no HR tools |
 

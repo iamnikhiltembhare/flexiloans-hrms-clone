@@ -3,12 +3,14 @@ import { Plus, Inbox, Loader, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, SearchInput, Select, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const CATEGORIES = ['Payroll', 'IT', 'HR Records', 'Finance', 'Benefits']
 const BLANK = { subject: '', category: 'IT', priority: 'Medium', description: '' }
 
 export default function Helpdesk() {
   const { tickets, addTicket, setTicketStatus, toast, notify } = useApp()
+  const { user } = useAuth()
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('All statuses')
   const [cat, setCat] = useState('All categories')
@@ -25,7 +27,7 @@ export default function Helpdesk() {
   const submit = (e) => {
     e.preventDefault()
     if (!form.subject.trim()) { setErr('Please describe the issue in the subject line.'); return }
-    const id = addTicket({ subject: form.subject.trim(), category: form.category, priority: form.priority })
+    const id = addTicket({ subject: form.subject.trim(), category: form.category, priority: form.priority, raisedBy: user.name })
     notify({ title: 'Ticket ' + id + ' raised', detail: form.subject.trim(), to: '/helpdesk', kind: 'task' })
     toast('Ticket raised', id + ' has been sent to the ' + form.category + ' desk')
     setForm(BLANK); setErr(''); setOpen(false)

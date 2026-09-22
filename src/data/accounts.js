@@ -40,15 +40,16 @@ export const ROLES = {
 
 export const ACCOUNTS = [
   {
-    username: 'nikhil.tembhare',
-    password: 'demo1234',
+    username: 'admin',
+    password: 'Admin@2026',
     role: 'super_admin',
     profile: {
-      id: 'FL1042', name: 'Nikhil Tembhare', email: 'nikhil.tembhare@flexiloans.com',
-      designation: 'Senior Product Manager', department: 'Product', location: 'Mumbai HQ',
-      manager: 'Aarti Deshmukh', joinDate: '2022-04-11', phone: '+91 98200 41042',
-      bloodGroup: 'B+', dob: '1993-08-17', gender: 'Male', employmentType: 'Permanent',
-      grade: 'M3', bank: 'HDFC Bank 4417', pan: 'ABKPT****J', uan: '1012****3388',
+      id: 'FL0001', name: 'System Administrator', shortName: 'Admin', email: 'admin@flexiloans.com',
+      designation: 'System Administrator', department: 'IT & Systems', location: 'Mumbai HQ',
+      manager: 'Not applicable', joinDate: '2021-01-01', phone: 'Not assigned',
+      bloodGroup: 'Not assigned', dob: 'Not assigned', gender: 'Not assigned',
+      employmentType: 'Service account', grade: 'Not applicable',
+      bank: 'Not applicable', pan: 'Not applicable', uan: 'Not applicable',
     },
   },
   {

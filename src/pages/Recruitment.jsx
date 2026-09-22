@@ -3,6 +3,7 @@ import { Plus, Briefcase, Users, FileCheck, Timer, Star, Download } from 'lucide
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, Avatar, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { departments, locations } from '../data/mock.js'
 import { downloadCSV } from '../lib/download.js'
 
@@ -11,6 +12,7 @@ const BLANK = { role: '', dept: 'Engineering', location: 'Mumbai HQ', type: 'Per
 
 export default function Recruitment() {
   const { openings, candidates, advanceCandidate, toast, notify } = useApp()
+  const { user } = useAuth()
   const [tab, setTab] = useState('Open requisitions')
   const [reqs, setReqs] = useState(openings)
   const [open, setOpen] = useState(false)
@@ -24,7 +26,7 @@ export default function Recruitment() {
     setReqs((l) => [{
       id, role: form.role.trim() + (Number(form.count) > 1 ? ' (x' + form.count + ')' : ''),
       dept: form.dept, location: form.location, type: form.type, applicants: 0,
-      stage: 'Sourcing', owner: 'Nikhil Tembhare', posted: new Date().toISOString().slice(0, 10),
+      stage: 'Sourcing', owner: user.name, posted: new Date().toISOString().slice(0, 10),
       priority: form.priority,
     }, ...l])
     notify({ title: 'Requisition ' + id + ' raised', detail: form.role.trim() + ' - ' + form.location, to: '/recruitment', kind: 'task' })

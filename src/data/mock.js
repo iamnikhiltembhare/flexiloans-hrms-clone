@@ -1,12 +1,12 @@
 // Mock dataset for the FlexiLoans HRMS clone. No backend required.
 
 export const currentUser = {
-  id: 'FL1042',
-  name: 'Nikhil Tembhare',
-  username: 'nikhil.tembhare',
-  email: 'nikhil.tembhare@flexiloans.com',
-  designation: 'Senior Product Manager',
-  department: 'Product',
+  id: 'FL0001',
+  name: 'System Administrator',
+  username: 'admin',
+  email: 'admin@flexiloans.com',
+  designation: 'System Administrator',
+  department: 'IT & Systems',
   location: 'Mumbai HQ',
   manager: 'Aarti Deshmukh',
   joinDate: '2022-04-11',
@@ -259,10 +259,10 @@ export const roleMatrix = [
 ]
 
 export const auditLog = [
-  { id: 'AU-9912', actor: 'Nikhil Tembhare', action: 'Role changed', target: 'FL1118 - Employee to HR Professional', ip: '10.22.4.18', at: '2026-09-22 09:12' },
+  { id: 'AU-9912', actor: 'System Administrator', action: 'Role changed', target: 'FL1118 - Employee to HR Professional', ip: '10.22.4.18', at: '2026-09-22 09:12' },
   { id: 'AU-9911', actor: 'Aarti Deshmukh', action: 'Leave approved', target: 'LV-2038 - Priya Nair', ip: '10.22.4.51', at: '2026-09-22 08:47' },
   { id: 'AU-9910', actor: 'System', action: 'Payroll run started', target: 'September 2026 cycle', ip: 'scheduler', at: '2026-09-22 02:00' },
-  { id: 'AU-9909', actor: 'Nikhil Tembhare', action: 'Settings updated', target: 'WFH allowance 8 to 10 days', ip: '10.22.4.18', at: '2026-09-21 18:20' },
+  { id: 'AU-9909', actor: 'System Administrator', action: 'Settings updated', target: 'WFH allowance 8 to 10 days', ip: '10.22.4.18', at: '2026-09-21 18:20' },
   { id: 'AU-9908', actor: 'Manish Pillai', action: 'Requisition raised', target: 'REQ-309 - Credit Analyst', ip: '10.22.9.77', at: '2026-09-21 16:05' },
   { id: 'AU-9907', actor: 'Aarti Deshmukh', action: 'Employee added', target: 'FL1121 - Kavya Menon', ip: '10.22.4.51', at: '2026-09-21 14:33' },
   { id: 'AU-9906', actor: 'System', action: 'Failed sign-in (3 attempts)', target: 'unknown@flexiloans.com', ip: '103.44.18.2', at: '2026-09-21 11:58' },

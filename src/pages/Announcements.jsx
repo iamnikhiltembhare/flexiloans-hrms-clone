@@ -3,6 +3,7 @@ import { Pin, Plus } from 'lucide-react'
 import { PageHeader, Card, Badge, Tabs, Avatar } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const TAGS = ['Policy', 'Performance', 'Benefits', 'Event', 'Compliance']
 const TAG_TONE = { Policy: 'cyan', Performance: 'purple', Benefits: 'green', Event: 'blue', Compliance: 'amber' }
@@ -10,6 +11,7 @@ const BLANK = { title: '', body: '', tag: 'Policy' }
 
 export default function Announcements() {
   const { announcements, addAnnouncement, toast, notify } = useApp()
+  const { user } = useAuth()
   const [tab, setTab] = useState('All')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -21,7 +23,7 @@ export default function Announcements() {
   const post = (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.body.trim()) { setErr('A title and a message are both required.'); return }
-    addAnnouncement({ title: form.title.trim(), body: form.body.trim(), tag: form.tag })
+    addAnnouncement({ title: form.title.trim(), body: form.body.trim(), tag: form.tag, author: user.name })
     notify({ title: 'Announcement published', detail: form.title.trim(), to: '/announcements', kind: 'info' })
     toast('Announcement published', 'Everyone in the organisation can see it now')
     setForm(BLANK); setErr(''); setOpen(false); setTab('All')

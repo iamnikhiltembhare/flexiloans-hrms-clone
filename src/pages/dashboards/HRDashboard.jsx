@@ -43,7 +43,7 @@ export default function HRDashboard() {
   return (
     <>
       <PageHeader
-        title={greeting + ', ' + String(user?.name || '').split(' ')[0]}
+        title={greeting + ', ' + (user?.shortName || String(user?.name || '').split(' ')[0])}
         subtitle="People operations overview for FlexiLoans"
         actions={<Link to="/employees" className="btn-primary"><UserPlus size={13} /> Employee directory</Link>}
       />
