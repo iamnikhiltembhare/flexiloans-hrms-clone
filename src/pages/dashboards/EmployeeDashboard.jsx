@@ -25,7 +25,7 @@ export default function EmployeeDashboard() {
         subtitle={user?.designation + ' - ' + user?.department + ' - ' + user?.location}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Present this month" value={attendanceSummary.present} hint="of 22 working days" icon={CalendarCheck} tone="green" />
         <StatCard label="Leave balance" value={leaveBalances.reduce((s, l) => s + (l.total - l.used), 0)} hint="days across all types" icon={CalendarDays} tone="cyan" />
         <StatCard label="Last net pay" value={INR(lastPayslip.net)} hint={lastPayslip.month} icon={Wallet} tone="blue" />
@@ -67,7 +67,7 @@ export default function EmployeeDashboard() {
         <Card title="Announcements" className="lg:col-span-2" bodyClass="p-0"
           actions={<Link to="/announcements" className="text-[11px] text-cyan hover:underline">View all</Link>}>
           {announcements.slice(0, 3).map((a) => (
-            <div key={a.id} className="px-4 py-3 border-b border-line last:border-0">
+            <div key={a.id} className="lift px-4 py-3 border-b border-line last:border-0 hover:bg-canvas/60">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="h3">{a.title}</h3>
                 <Badge tone="cyan">{a.tag}</Badge>

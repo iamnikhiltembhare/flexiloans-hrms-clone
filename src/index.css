@@ -22,6 +22,135 @@ body { margin: 0; background: #F5F7FA; color: #1A1D26; font-family: Inter, -appl
   .td { @apply px-3 py-2.5 text-[13px] text-[#374151] border-b border-line; }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Motion system
+   Every effect below is disabled under prefers-reduced-motion (see the media
+   query at the end of this file).
+--------------------------------------------------------------------------- */
+
+@keyframes fl-rise {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fl-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fl-pop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.96); }
+  60%  { transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes fl-slide-in {
+  from { opacity: 0; transform: translateX(18px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fl-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -18px, 0); }
+}
+@keyframes fl-sheen {
+  from { background-position: -160% 0; }
+  to   { background-position: 260% 0; }
+}
+@keyframes fl-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(0,180,216,.35); }
+  70%  { box-shadow: 0 0 0 9px rgba(0,180,216,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,180,216,0); }
+}
+
+/* Page + card entrances -------------------------------------------------- */
+.page-enter { animation: fl-fade .28s ease-out both; }
+
+.rise { animation: fl-rise .44s cubic-bezier(.22,.8,.3,1) both; }
+
+/* Stagger children of a grid so rows cascade in */
+.stagger > * { animation: fl-rise .46s cubic-bezier(.22,.8,.3,1) both; }
+.stagger > *:nth-child(1) { animation-delay: .02s }
+.stagger > *:nth-child(2) { animation-delay: .07s }
+.stagger > *:nth-child(3) { animation-delay: .12s }
+.stagger > *:nth-child(4) { animation-delay: .17s }
+.stagger > *:nth-child(5) { animation-delay: .22s }
+.stagger > *:nth-child(6) { animation-delay: .27s }
+.stagger > *:nth-child(n+7) { animation-delay: .3s }
+
+/* Reveal on scroll ------------------------------------------------------- */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .5s ease-out, transform .5s cubic-bezier(.22,.8,.3,1); }
+.reveal.is-in { opacity: 1; transform: none; }
+
+/* 3D tilt surfaces ------------------------------------------------------- */
+.tilt {
+  transform-style: preserve-3d;
+  transition: transform .35s cubic-bezier(.22,.8,.3,1), box-shadow .35s ease;
+  will-change: transform;
+  position: relative;
+}
+.tilt:hover { box-shadow: 0 18px 36px -18px rgba(27,54,93,.35), 0 2px 6px rgba(27,54,93,.06); }
+/* Cursor-following highlight */
+.tilt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--ga, 0);
+  transition: opacity .3s ease;
+  background: radial-gradient(420px circle at var(--gx,50%) var(--gy,50%), rgba(0,180,216,.12), transparent 42%);
+}
+.tilt > * { transform: translateZ(18px); }
+
+/* Lift on hover for list rows and link cards ----------------------------- */
+.lift { transition: transform .22s cubic-bezier(.22,.8,.3,1), box-shadow .22s ease, background-color .18s ease; }
+.lift:hover { transform: translateY(-2px); }
+
+/* Parallax scene (login) ------------------------------------------------- */
+.scene { perspective: 1000px; }
+.layer { will-change: transform; transition: transform .45s cubic-bezier(.22,.8,.3,1); }
+.layer-1 { transform: translate3d(calc(var(--px,0) * 10px), calc(var(--py,0) * 8px),  0); }
+.layer-2 { transform: translate3d(calc(var(--px,0) * 22px), calc(var(--py,0) * 16px), 0); }
+.layer-3 { transform: translate3d(calc(var(--px,0) * 38px), calc(var(--py,0) * 26px), 0); }
+.layer-card {
+  transform: rotateY(calc(var(--px,0) * -3deg)) rotateX(calc(var(--py,0) * 3deg)) translateZ(0);
+  transform-style: preserve-3d;
+}
+.drift { animation: fl-drift 9s ease-in-out infinite; }
+.drift-slow { animation: fl-drift 14s ease-in-out infinite; }
+
+/* Sheen across the brand gradient button --------------------------------- */
+.sheen { position: relative; overflow: hidden; }
+.sheen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.45) 45%, transparent 70%);
+  background-size: 220% 100%;
+  animation: fl-sheen 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pulse-ring { animation: fl-ring 2s ease-out infinite; }
+
+/* Animated progress fill -------------------------------------------------- */
+.bar-fill { transition: width .9s cubic-bezier(.22,.8,.3,1); }
+
+/* Nav item hover ---------------------------------------------------------- */
+.nav-item { transition: background-color .2s ease, color .2s ease, padding-left .2s ease; }
+.nav-item:hover { padding-left: 1.15rem; }
+
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Honour the viewer's motion preference: kill every animation and transform. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+  .tilt, .layer, .layer-card { transform: none !important; }
+  .tilt::after, .sheen::before { display: none; }
+  .nav-item:hover { padding-left: 1rem; }
+}

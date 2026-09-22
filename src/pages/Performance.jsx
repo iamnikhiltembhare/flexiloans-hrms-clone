@@ -21,7 +21,7 @@ export default function Performance() {
         actions={<button className="btn-primary" onClick={() => setOpen(true)}>Start self-assessment</button>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Goal completion" value={weighted + '%'} hint="weighted across 5 goals" icon={Target} tone="cyan" />
         <StatCard label="Goals on track" value={goals.filter((g) => g.status === 'On Track').length + '/' + goals.length} hint="1 at risk, 1 behind" icon={TrendingUp} tone="green" />
         <StatCard label="Last rating" value="4.2" hint="Exceeds expectations (FY26)" icon={Star} tone="purple" />

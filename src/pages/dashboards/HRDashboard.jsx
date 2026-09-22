@@ -48,7 +48,7 @@ export default function HRDashboard() {
         actions={<Link to="/employees" className="btn-primary"><UserPlus size={13} /> Employee directory</Link>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Total headcount" value={504 + employees.length} hint="+22 joiners this month" icon={Users} tone="cyan" />
         <StatCard label="Pending approvals" value={pendingLeave.length} hint="leave requests in your queue" icon={CalendarDays} tone="amber" />
         <StatCard label="Open requisitions" value={openings.length} hint={openings.filter((o) => o.priority === 'High').length + ' high priority'} icon={Briefcase} tone="blue" />
@@ -79,7 +79,7 @@ export default function HRDashboard() {
         <Card title="My action queue" subtitle="Items assigned to HR" bodyClass="p-2">
           {queue.map((q) => (
             <Link key={q.label} to={q.to}
-              className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-canvas transition-colors">
+              className="lift flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-canvas hover:shadow-[0_6px_16px_-12px_rgba(27,54,93,.5)]">
               <span className="grid place-items-center h-8 w-8 rounded-lg bg-cyan-bg text-[#0097B2] text-[13px] font-semibold font-mono">{q.count}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-medium text-navy">{q.label}</span>

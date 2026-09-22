@@ -43,7 +43,7 @@ export default function Helpdesk() {
         actions={<button className="btn-primary" onClick={() => setOpen(true)}><Plus size={13} /> Raise a ticket</button>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Open" value={tickets.filter((t) => t.status === 'Open').length} icon={Inbox} tone="blue" />
         <StatCard label="In progress" value={tickets.filter((t) => t.status === 'In Progress').length} icon={Loader} tone="amber" />
         <StatCard label="Resolved" value={tickets.filter((t) => t.status === 'Resolved').length} icon={CheckCircle2} tone="green" />

@@ -51,7 +51,7 @@ export default function Documents() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-4">
+      <div className="grid gap-4 sm:grid-cols-3 mb-4 stagger">
         <StatCard label="Total documents" value={documents.length} icon={FileText} tone="cyan" />
         <StatCard label="Verified" value={documents.filter((d) => d.status === 'Verified').length} icon={ShieldCheck} tone="green" />
         <StatCard label="Awaiting verification" value={documents.filter((d) => d.status === 'Pending').length} icon={Clock} tone="amber" />

@@ -86,7 +86,7 @@ export default function Leave() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 mb-4 stagger">
         {leaveBalances.map((l) => (
           <Card key={l.code} bodyClass="p-4">
             <div className="flex items-baseline justify-between">

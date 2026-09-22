@@ -45,7 +45,7 @@ export default function Sidebar({ open, onClose }) {
     <>
       {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={onClose} />}
       <aside className={
-        'fixed lg:static z-40 inset-y-0 left-0 w-60 shrink-0 bg-navy text-white flex flex-col transition-transform duration-200 ' +
+        'fixed lg:static z-40 inset-y-0 left-0 w-60 shrink-0 text-white flex flex-col transition-transform duration-300 ease-out bg-[linear-gradient(175deg,#1B365D_0%,#16294a_60%,#0f1e36_100%)] ' +
         (open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')
       }>
         <div className="h-14 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
@@ -60,13 +60,19 @@ export default function Sidebar({ open, onClose }) {
               {g.items.map(({ to, label, icon: Icon, end }) => (
                 <NavLink key={to} to={to} end={end} onClick={onClose}
                   className={({ isActive }) =>
-                    'flex items-center gap-2.5 px-4 py-2 text-[13px] border-l-2 transition-colors ' +
+                    'nav-item group relative flex items-center gap-2.5 px-4 py-2 text-[13px] ' +
                     (isActive
-                      ? 'bg-[rgba(0,180,216,0.15)] border-cyan text-white font-medium'
-                      : 'border-transparent text-white/60 hover:bg-white/[0.08] hover:text-white')
+                      ? 'bg-[rgba(0,180,216,0.15)] text-white font-medium'
+                      : 'text-white/60 hover:bg-white/[0.08] hover:text-white')
                   }>
-                  <Icon size={15} />
-                  {label}
+                  {({ isActive }) => (
+                    <>
+                      <span className={'absolute left-0 top-0 bottom-0 w-0.5 bg-cyan rounded-r transition-all duration-300 ' +
+                        (isActive ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50')} />
+                      <Icon size={15} className="transition-transform duration-200 group-hover:scale-110" />
+                      {label}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>

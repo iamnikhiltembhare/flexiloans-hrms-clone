@@ -70,7 +70,7 @@ export default function Topbar({ onMenu }) {
   }
 
   return (
-    <header className="h-14 shrink-0 bg-white border-b border-line flex items-center gap-3 px-4 sticky top-0 z-30">
+    <header className="h-14 shrink-0 bg-white/85 backdrop-blur-md border-b border-line flex items-center gap-3 px-4 sticky top-0 z-30">
       <button className="lg:hidden text-navy" onClick={onMenu} aria-label="Open menu"><Menu size={20} /></button>
 
       <div ref={searchRef} className="hidden md:block relative w-72">
@@ -85,7 +85,7 @@ export default function Topbar({ onMenu }) {
         )}
 
         {focused && results && (
-          <div className="absolute left-0 right-0 mt-1.5 card p-1.5 z-40 max-h-[22rem] overflow-y-auto">
+          <div className="absolute left-0 right-0 mt-1.5 card p-1.5 z-40 max-h-[22rem] overflow-y-auto origin-top" style={{ animation: 'fl-pop .2s cubic-bezier(.22,.8,.3,1) both' }}>
               {total === 0 && <p className="px-2.5 py-3 text-[12px] text-muted">No matches for "{q}".</p>}
 
               {results.people.length > 0 && <p className="px-2.5 pt-1.5 pb-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint">People</p>}
@@ -130,10 +130,10 @@ export default function Topbar({ onMenu }) {
 
         <div className="relative">
           <button onClick={() => setBell((v) => !v)}
-            className="relative grid place-items-center h-8 w-8 rounded-lg hover:bg-canvas text-navy" aria-label="Notifications">
+            className="relative grid place-items-center h-8 w-8 rounded-lg hover:bg-canvas text-navy transition-transform duration-200 hover:scale-110 active:scale-95" aria-label="Notifications">
             <Bell size={17} />
             {unread > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 grid place-items-center rounded-full bg-[#DC2626] text-white text-[9px] font-semibold">
+              <span className="pulse-ring absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 grid place-items-center rounded-full bg-[#DC2626] text-white text-[9px] font-semibold">
                 {unread > 9 ? '9+' : unread}
               </span>
             )}
@@ -142,7 +142,7 @@ export default function Topbar({ onMenu }) {
           {bell && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setBell(false)} />
-              <div className="absolute right-0 mt-1.5 w-[min(92vw,22rem)] card z-20 overflow-hidden">
+              <div className="absolute right-0 mt-1.5 w-[min(92vw,22rem)] card z-20 overflow-hidden origin-top-right" style={{ animation: 'fl-pop .22s cubic-bezier(.22,.8,.3,1) both' }}>
                 <header className="flex items-center justify-between px-3.5 py-2.5 border-b border-line">
                   <h3 className="h3">Notifications {unread > 0 && <span className="text-muted font-normal">({unread} new)</span>}</h3>
                   {notifications.length > 0 && (
@@ -161,7 +161,7 @@ export default function Topbar({ onMenu }) {
                     return (
                       <button key={n.id}
                         onClick={() => { markRead(n.id); setBell(false); if (n.to) navigate(n.to) }}
-                        className={'w-full text-left flex gap-2.5 px-3.5 py-2.5 border-b border-line last:border-0 hover:bg-canvas transition-colors ' + (n.read ? '' : 'bg-cyan-bg/40')}>
+                        className={'lift w-full text-left flex gap-2.5 px-3.5 py-2.5 border-b border-line last:border-0 hover:bg-canvas ' + (n.read ? '' : 'bg-cyan-bg/40')}>
                         <Icon size={15} className="mt-0.5 shrink-0" style={{ color: NOTE_TONE[n.kind] || NOTE_TONE.info }} />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[12px] font-medium text-navy">{n.title}</span>
@@ -197,7 +197,7 @@ export default function Topbar({ onMenu }) {
           {menu && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
-              <div className="absolute right-0 mt-1.5 w-52 card p-1 z-20">
+              <div className="absolute right-0 mt-1.5 w-52 card p-1 z-20 origin-top-right" style={{ animation: 'fl-pop .2s cubic-bezier(.22,.8,.3,1) both' }}>
                 <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#374151] rounded-lg hover:bg-canvas"
                   onClick={() => { setMenu(false); navigate('/profile') }}><User size={14} /> My profile</button>
                 <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#374151] rounded-lg hover:bg-canvas"

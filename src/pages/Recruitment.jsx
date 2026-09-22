@@ -64,7 +64,7 @@ export default function Recruitment() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Open requisitions" value={reqs.length} hint={reqs.filter((r) => r.priority === 'High').length + ' marked high priority'} icon={Briefcase} tone="cyan" />
         <StatCard label="Active candidates" value={reqs.reduce((s, o) => s + o.applicants, 0)} hint="across all stages" icon={Users} tone="blue" />
         <StatCard label="Offers in flight" value={candidates.filter((c) => c.stage === 'Offer Rolled').length + 3} hint="1 awaiting sign-off" icon={FileCheck} tone="green" />

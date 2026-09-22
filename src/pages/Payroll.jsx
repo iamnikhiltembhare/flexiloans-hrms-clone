@@ -69,7 +69,7 @@ export default function Payroll() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Monthly gross" value={INR(totalEarn)} hint="Fixed cost to company" icon={Wallet} tone="cyan" />
         <StatCard label="Monthly net" value={INR(totalEarn - totalDed)} hint="Credited on the last working day" icon={TrendingUp} tone="green" />
         <StatCard label="Monthly deductions" value={INR(totalDed)} hint="PF, PT and TDS" icon={Receipt} tone="amber" />

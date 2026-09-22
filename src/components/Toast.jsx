@@ -10,8 +10,9 @@ export default function ToastStack({ toasts, dismiss }) {
         const Icon = ICONS[t.kind] || Info
         return (
           <div key={t.id} role="status"
-            className="card flex items-start gap-2.5 px-3.5 py-3 animate-[slideIn_.18s_ease-out]"
-            style={{ borderLeft: '3px solid ' + (BORDER[t.kind] || BORDER.info) }}>
+            className="card flex items-start gap-2.5 px-3.5 py-3"
+            style={{ borderLeft: '3px solid ' + (BORDER[t.kind] || BORDER.info),
+              animation: 'fl-slide-in .26s cubic-bezier(.22,.8,.3,1) both' }}>
             <Icon size={15} className="mt-0.5 shrink-0" style={{ color: BORDER[t.kind] || BORDER.info }} />
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium text-navy">{t.title}</p>

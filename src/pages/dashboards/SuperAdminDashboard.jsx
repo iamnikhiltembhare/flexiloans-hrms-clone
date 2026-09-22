@@ -41,7 +41,7 @@ export default function SuperAdminDashboard() {
         actions={<Link to="/system" className="btn-primary"><ShieldCheck size={13} /> System admin</Link>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Active user accounts" value={totalUsers} hint={roleMatrix.length + ' roles configured'} icon={Users} tone="purple" />
         <StatCard label="Services operational" value={(systemHealth.length - degraded.length) + '/' + systemHealth.length} hint={degraded.length ? degraded[0].name + ' degraded' : 'all systems normal'} icon={degraded.length ? AlertTriangle : CheckCircle2} tone={degraded.length ? 'amber' : 'green'} />
         <StatCard label="Failed sign-ins" value={failedLogins} hint="past 5 working days" icon={KeyRound} tone="red" />
@@ -67,7 +67,7 @@ export default function SuperAdminDashboard() {
         <Card title="Admin shortcuts" bodyClass="p-2">
           {shortcuts.map(({ label, detail, to, icon: Icon }) => (
             <Link key={to + label} to={to}
-              className="flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-canvas transition-colors">
+              className="lift flex items-center gap-3 px-2.5 py-2.5 rounded-lg hover:bg-canvas hover:shadow-[0_6px_16px_-12px_rgba(27,54,93,.5)]">
               <span className="grid place-items-center h-8 w-8 rounded-lg bg-[rgba(124,58,237,0.1)] text-[#7C3AED]"><Icon size={15} /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-medium text-navy">{label}</span>

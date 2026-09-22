@@ -78,7 +78,7 @@ export default function Employees() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Total" value={employees.length} icon={Users} tone="cyan" />
         <StatCard label="Active" value={employees.filter((e) => e.status === 'Active').length} icon={UserCheck} tone="green" />
         <StatCard label="On notice" value={employees.filter((e) => e.status === 'On Notice').length} icon={UserMinus} tone="red" />

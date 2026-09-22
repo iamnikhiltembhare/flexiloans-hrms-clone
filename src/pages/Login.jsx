@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
+import { useParallaxScene } from '../lib/motion.js'
 import { ACCOUNTS, ROLES } from '../data/accounts.js'
 
 export default function Login() {
@@ -12,6 +13,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
+  const scene = useParallaxScene()
 
   const submit = (e) => {
     e.preventDefault()
@@ -23,26 +25,41 @@ export default function Login() {
   const fill = (u, p) => { setUsername(u); setPassword(p); setError('') }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white flex items-center justify-center px-4">
-      <svg className="absolute bottom-0 left-0 w-full pointer-events-none" viewBox="0 0 1440 420" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 210 C 320 90 560 330 840 240 C 1100 160 1280 260 1440 200 V420 H0 Z" fill="#E8EDF7" />
-        <path d="M0 290 C 300 190 620 380 900 300 C 1140 232 1300 320 1440 280 V420 H0 Z" fill="#DDE6F5" />
-      </svg>
+    <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-white flex items-center justify-center px-4">
+      {/* Parallax backdrop: three depth layers that track the pointer */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="layer layer-1 absolute -top-24 -left-24 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-50 drift-slow"
+          style={{ background: 'radial-gradient(circle,#CFE6F7 0%,transparent 68%)' }} />
+        <div className="layer layer-2 absolute top-1/4 -right-28 h-[22rem] w-[22rem] rounded-full blur-3xl opacity-45 drift"
+          style={{ background: 'radial-gradient(circle,#BFEFF8 0%,transparent 68%)' }} />
+        <div className="layer layer-3 absolute bottom-10 left-1/4 h-64 w-64 rounded-full blur-3xl opacity-35 drift-slow"
+          style={{ background: 'radial-gradient(circle,#E2E8F7 0%,transparent 70%)' }} />
 
-      <div className="relative w-full max-w-sm">
-        <div className="flex justify-center mb-8"><Logo variant="dark" size={40} /></div>
+        <svg className="layer layer-1 absolute bottom-0 left-0 w-full" viewBox="0 0 1440 420" preserveAspectRatio="none">
+          <path d="M0 210 C 320 90 560 330 840 240 C 1100 160 1280 260 1440 200 V420 H0 Z" fill="#E8EDF7" />
+        </svg>
+        <svg className="layer layer-2 absolute bottom-0 left-0 w-full" viewBox="0 0 1440 420" preserveAspectRatio="none">
+          <path d="M0 290 C 300 190 620 380 900 300 C 1140 232 1300 320 1440 280 V420 H0 Z" fill="#DDE6F5" />
+        </svg>
+        <svg className="layer layer-3 absolute bottom-0 left-0 w-full" viewBox="0 0 1440 420" preserveAspectRatio="none">
+          <path d="M0 350 C 340 280 640 420 940 360 C 1180 312 1320 372 1440 340 V420 H0 Z" fill="#CBD9EF" />
+        </svg>
+      </div>
+
+      <div className="layer-card relative w-full max-w-sm rise">
+        <div className="flex justify-center mb-8 drift-slow"><Logo variant="dark" size={40} /></div>
 
         <form onSubmit={submit} className="space-y-3">
           <div className="relative">
             <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy/50" />
-            <input className="w-full rounded-full border border-line bg-white pl-11 pr-4 py-3 text-[13px] outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+            <input className="w-full rounded-full border border-line bg-white/90 backdrop-blur pl-11 pr-4 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
               placeholder="Your Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
           </div>
 
           <div className="relative">
             <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy/50" />
             <input type={show ? 'text' : 'password'}
-              className="w-full rounded-full border border-line bg-white pl-11 pr-11 py-3 text-[13px] outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+              className="w-full rounded-full border border-line bg-white/90 backdrop-blur pl-11 pr-11 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
               placeholder="Your Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             <button type="button" onClick={() => setShow((v) => !v)} aria-label="Toggle password visibility"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-navy/50 hover:text-navy">
@@ -53,9 +70,9 @@ export default function Login() {
           {error && <p className="text-[12px] text-[#DC2626] px-2">{error}</p>}
 
           <button type="submit"
-            className="w-full rounded-full py-3 text-[15px] font-medium text-white tracking-wide transition-opacity hover:opacity-90"
+            className="sheen w-full rounded-full py-3 text-[15px] font-medium text-white tracking-wide transition-all duration-300 hover:shadow-[0_10px_28px_-8px_rgba(0,180,216,.6)] hover:-translate-y-0.5 active:translate-y-0"
             style={{ background: 'linear-gradient(90deg,#7FD4EE 0%,#3FBEE4 50%,#7FD4EE 100%)' }}>
-            LOGIN
+            <span className="relative z-10">LOGIN</span>
           </button>
         </form>
 
@@ -66,11 +83,11 @@ export default function Login() {
 
         <p className="mt-8 text-center text-[12px] text-muted">Powered by uKnowva</p>
 
-        <div className="mt-6 rounded-card border border-line bg-canvas/70 p-3">
+        <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">Demo build - test logins</p>
           {ACCOUNTS.map((a) => (
             <button key={a.username} type="button" onClick={() => fill(a.username, a.password)}
-              className="w-full text-left rounded-lg px-2.5 py-2 hover:bg-white transition-colors">
+              className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-white hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-[12px] font-medium text-navy">{ROLES[a.role].label}</span>
                 <span className="text-[10px] font-mono text-muted">{a.username}</span>

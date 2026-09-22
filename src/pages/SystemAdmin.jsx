@@ -43,7 +43,7 @@ export default function SystemAdmin() {
         actions={<button className="btn-secondary" onClick={exportAudit}><Download size={13} /> Export audit log</button>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Configured roles" value={Object.keys(ROLES).length} icon={ShieldCheck} tone="purple" />
         <StatCard label="Demo logins" value={ACCOUNTS.length} hint="seeded accounts in this build" icon={Users} tone="cyan" />
         <StatCard label="Audit events" value={auditLog.length} hint="shown in this view" icon={ScrollText} tone="blue" />
