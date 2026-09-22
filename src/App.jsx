@@ -18,6 +18,7 @@ import Helpdesk from './pages/Helpdesk.jsx'
 import Reports from './pages/Reports.jsx'
 import Settings from './pages/Settings.jsx'
 import Profile from './pages/Profile.jsx'
+import Holidays from './pages/Holidays.jsx'
 import SystemAdmin from './pages/SystemAdmin.jsx'
 import NoAccess from './pages/NoAccess.jsx'
 
@@ -46,6 +47,7 @@ export default function App() {
         {/* Self-service - every role has these */}
         <Route path="announcements" element={<Require perm={PERMS.SELF}><Announcements /></Require>} />
         <Route path="attendance" element={<Require perm={PERMS.SELF}><Attendance /></Require>} />
+        <Route path="holidays" element={<Require perm={PERMS.SELF}><Holidays /></Require>} />
         <Route path="leave" element={<Require perm={PERMS.SELF}><Leave /></Require>} />
         <Route path="payroll" element={<Require perm={PERMS.SELF}><Payroll /></Require>} />
         <Route path="documents" element={<Require perm={PERMS.SELF}><Documents /></Require>} />

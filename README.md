@@ -59,7 +59,8 @@ To add a role, add an entry to `ROLES` in `src/data/accounts.js` and give it a
 
 **Overview** - Dashboard (headcount, attendance, approvals, celebrations), Announcements
 
-**My workspace** - Attendance (daily log, team view, holiday calendar), Leave
+**My workspace** - Attendance (daily log, team view, holiday calendar), Holiday
+Calendar 2026 (year grid, company holidays, optional holidays with apply), Leave
 (balances, apply, approvals), Payroll (payslips, salary structure, tax
 declaration), Documents, Performance (goals, competencies, review history),
 My Profile
@@ -92,3 +93,38 @@ for numeric data. Tokens live in `tailwind.config.js` and `src/index.css`.
 - Names, IDs, salaries and documents are fabricated for the demo.
 - To point this at a real API, replace the imports from `src/data/mock.js`
   with fetch calls - the page components take plain arrays and objects.
+
+
+## Holiday calendar
+
+`src/data/holidays.js` carries the 2026 India calendar: 17 company (gazetted)
+holidays and 30 optional / restricted holidays, following the DoPT list for
+2026. Employees may apply for any two optional holidays; applying creates a
+normal leave request that the manager approves.
+
+Dates that depend on moon sighting (the two Eids, Muharram, Milad-un-Nabi,
+Jamat-Ul-Vida) are flagged `lunar: true` and may shift by a day.
+
+### Live sync with Google Calendar
+
+Google publishes national holiday calendars publicly, so Calendar API v3 can be
+read with an API key alone - no OAuth and no backend, and the endpoint sends
+CORS headers so the browser calls it directly.
+
+1. Google Cloud Console -> enable **Google Calendar API**
+2. Create an API key; restrict it by HTTP referrer and to the Calendar API
+3. Add it to `.env`:
+
+```
+VITE_GOOGLE_API_KEY=your_api_key_here
+```
+
+The Holiday Calendar page then pulls the public *Holidays in India* calendar,
+caches it in `localStorage` for 12 hours, and shows a green "Synced from Google
+Calendar" banner. Without a key - or if the request fails - it falls back to the
+bundled list and says so. Other regions are available in
+`HOLIDAY_CALENDARS` in `src/lib/googleCalendar.js`.
+
+Note that the API key would be visible in the client bundle. That is acceptable
+for a referrer-restricted, read-only public-calendar key; anything broader
+belongs behind a server.

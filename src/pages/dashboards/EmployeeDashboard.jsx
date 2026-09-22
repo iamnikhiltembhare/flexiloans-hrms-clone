@@ -5,8 +5,9 @@ import { PageHeader, Card, StatCard, Badge, Progress, Table } from '../../compon
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useApp } from '../../context/DataContext.jsx'
 import {
-  leaveBalances, attendanceSummary, attendanceLog, holidays, payslips, goals, INR,
+  leaveBalances, attendanceSummary, attendanceLog, payslips, goals, INR,
 } from '../../data/mock.js'
+import { companyHolidays, prettyDate } from '../../data/holidays.js'
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
@@ -79,13 +80,14 @@ export default function EmployeeDashboard() {
         </Card>
 
         <div className="space-y-4">
-          <Card title="Upcoming holidays" bodyClass="p-0">
+          <Card title="Upcoming holidays" bodyClass="p-0"
+            actions={<Link to="/holidays" className="text-[11px] text-cyan hover:underline">Calendar</Link>}>
             <Table
               columns={[
-                { key: 'date', header: 'Date', mono: true },
+                { key: 'date', header: 'Date', mono: true, render: (r) => prettyDate(r.date) },
                 { key: 'name', header: 'Occasion' },
               ]}
-              rows={holidays.slice(0, 4)}
+              rows={companyHolidays.filter((h) => new Date(h.date) >= new Date('2026-09-22')).slice(0, 4)}
             />
           </Card>
 

@@ -3,7 +3,9 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Clock, CheckCircle2, XCircle, Home, Download, CalendarPlus } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
-import { attendanceLog, attendanceSummary, attendanceTrend, holidays } from '../data/mock.js'
+import { attendanceLog, attendanceSummary, attendanceTrend } from '../data/mock.js'
+import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
 
@@ -113,15 +115,16 @@ export default function Attendance() {
       )}
 
       {tab === 'Holiday calendar' && (
-        <Card title="Holiday calendar 2026" subtitle="Declared holidays for all India locations" bodyClass="p-0">
+        <Card title="Holiday calendar 2026" subtitle="Declared holidays for all India locations" bodyClass="p-0"
+          actions={<Link to="/holidays" className="text-[11px] text-cyan hover:underline">Open full calendar</Link>}>
           <Table
             columns={[
-              { key: 'date', header: 'Date', mono: true },
-              { key: 'day', header: 'Day' },
+              { key: 'date', header: 'Date', mono: true, render: (r) => prettyDate(r.date) },
+              { key: 'day', header: 'Day', render: (r) => weekdayOf(r.date) },
               { key: 'name', header: 'Occasion' },
               { key: 'type', header: 'Type', render: (r) => <Badge tone={r.type === 'National' ? 'blue' : 'purple'}>{r.type}</Badge> },
             ]}
-            rows={holidays}
+            rows={companyHolidays}
           />
         </Card>
       )}

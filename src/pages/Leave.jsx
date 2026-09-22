@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Plus, Check, X, Download } from 'lucide-react'
+import { Plus, Check, X, Download, ArrowUpRight } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, Tabs, Progress, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
-import { leaveBalances, holidays } from '../data/mock.js'
+import { leaveBalances } from '../data/mock.js'
+import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
+import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadCSV } from '../lib/download.js'
@@ -113,15 +115,18 @@ export default function Leave() {
       )}
 
       {tab === 'Upcoming holidays' && (
-        <Card bodyClass="p-0">
+        <Card bodyClass="p-0"
+          actions={<Link to="/holidays" className="text-[11px] text-cyan hover:underline inline-flex items-center gap-1">
+            Full 2026 calendar <ArrowUpRight size={11} />
+          </Link>}>
           <Table
             columns={[
-              { key: 'date', header: 'Date', mono: true },
-              { key: 'day', header: 'Day' },
+              { key: 'date', header: 'Date', mono: true, render: (r) => prettyDate(r.date) },
+              { key: 'day', header: 'Day', render: (r) => weekdayOf(r.date) },
               { key: 'name', header: 'Occasion' },
               { key: 'type', header: 'Type', render: (r) => <Badge tone={r.type === 'National' ? 'blue' : 'purple'}>{r.type}</Badge> },
             ]}
-            rows={holidays}
+            rows={companyHolidays.filter((h) => new Date(h.date) >= new Date('2026-09-22'))}
           />
         </Card>
       )}

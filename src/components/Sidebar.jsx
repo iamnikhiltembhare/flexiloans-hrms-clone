@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays, Wallet, FileText,
-  Megaphone, Briefcase, Target, LifeBuoy, BarChart3, Settings, User, X, ShieldCheck,
+  Megaphone, Briefcase, Target, LifeBuoy, BarChart3, Settings, User, X, ShieldCheck, CalendarHeart,
 } from 'lucide-react'
 import Logo from './Logo.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -17,6 +17,7 @@ const GROUPS = [
   { title: 'My Workspace', items: [
     { to: '/attendance', label: 'Attendance', icon: CalendarCheck, perm: PERMS.SELF },
     { to: '/leave', label: 'Leave', icon: CalendarDays, perm: PERMS.SELF },
+    { to: '/holidays', label: 'Holiday Calendar', icon: CalendarHeart, perm: PERMS.SELF },
     { to: '/payroll', label: 'Payroll', icon: Wallet, perm: PERMS.SELF },
     { to: '/documents', label: 'Documents', icon: FileText, perm: PERMS.SELF },
     { to: '/performance', label: 'Performance', icon: Target, perm: PERMS.SELF },
