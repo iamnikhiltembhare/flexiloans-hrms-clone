@@ -102,6 +102,6 @@ export async function fetchGoogleHolidays(year, { region = 'india', force = fals
 export const SYNC_LABEL = {
   live: 'Synced from Google Calendar',
   cached: 'Google Calendar (cached)',
-  'not-configured': 'Bundled list - Google sync not configured',
-  error: 'Bundled list - Google sync unavailable',
+  'not-configured': 'Company calendar - Google sync not configured',
+  error: 'Company calendar - Google sync unavailable',
 }

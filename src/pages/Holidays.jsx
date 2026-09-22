@@ -8,9 +8,10 @@ import {
 } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import YearGrid from '../components/YearGrid.jsx'
+import HolidayMonths from '../components/HolidayMonths.jsx'
 import {
-  HOLIDAY_YEAR, companyHolidays, optionalHolidays, OPTIONAL_HOLIDAY_QUOTA,
-  prettyDate, weekdayOf, isWeekend,
+  HOLIDAY_YEAR, YEARS, holidayList, companyHolidays, optionalHolidays,
+  OPTIONAL_HOLIDAY_QUOTA, prettyDate, weekdayOf, isWeekend,
 } from '../data/holidays.js'
 import { fetchGoogleHolidays, isConfigured, SYNC_LABEL } from '../lib/googleCalendar.js'
 import { useApp } from '../context/DataContext.jsx'
@@ -21,7 +22,8 @@ export default function Holidays() {
   const { addLeaveRequest, toast, notify } = useApp()
   const { user } = useAuth()
 
-  const [tab, setTab] = useState('Year at a glance')
+  const [tab, setTab] = useState('Calendar')
+  const [year, setYear] = useState(HOLIDAY_YEAR)
   const [q, setQ] = useState('')
   const [scope, setScope] = useState('All regions')
   const [applied, setApplied] = useState([])          // ISO dates taken as optional holidays
@@ -104,9 +106,10 @@ export default function Holidays() {
   return (
     <>
       <PageHeader
-        title={`Holiday calendar ${HOLIDAY_YEAR}`}
+        title={`Holiday calendar ${year}`}
         subtitle="Company holidays, optional holidays and what you have left to take"
         actions={<>
+          <Select value={String(year)} onChange={(v) => setYear(Number(v))} options={YEARS.map(String)} />
           <button className="btn-secondary" onClick={exportCalendar}><Download size={13} /> Export</button>
           <button className="btn-secondary" onClick={() => runSync(true)} disabled={syncing}>
             <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
@@ -126,8 +129,8 @@ export default function Holidays() {
             {googleLive
               ? ` - ${sync.items.length} entries from the public "Holidays in India" calendar.`
               : isConfigured()
-                ? ` ${sync.error || ''} The bundled ${HOLIDAY_YEAR} DoPT list is shown instead.`
-                : ` Add a Google Calendar API key as VITE_GOOGLE_API_KEY to pull holidays live; the bundled ${HOLIDAY_YEAR} DoPT list is shown meanwhile.`}
+                ? ` ${sync.error || ''} The published FlexiLoans ${HOLIDAY_YEAR} calendar is shown instead.`
+                : ` Showing the published FlexiLoans ${HOLIDAY_YEAR} calendar. Add a Google Calendar API key as VITE_GOOGLE_API_KEY to also pull the public India holiday feed.`}
           </p>
         </div>
       </div>
@@ -139,9 +142,27 @@ export default function Holidays() {
         <StatCard label="Long weekends" value={longWeekends} hint="holidays on a Monday or Friday" icon={MapPin} tone="amber" />
       </div>
 
-      <Tabs tabs={['Year at a glance', 'Company holidays', 'Optional holidays']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Calendar', 'Year grid', 'Company holidays', 'Optional holidays']} active={tab} onChange={setTab} />
 
-      {tab === 'Year at a glance' && (
+      {tab === 'Calendar' && (
+        year === HOLIDAY_YEAR ? (
+          <HolidayMonths
+            year={year}
+            holidays={holidayList}
+            appliedDates={applied}
+            quotaLeft={remaining}
+            onApply={(h) => setPick(h)}
+          />
+        ) : (
+          <Card bodyClass="p-10">
+            <p className="text-center text-[13px] text-muted">
+              No holiday calendar published for {year} yet.
+            </p>
+          </Card>
+        )
+      )}
+
+      {tab === 'Year grid' && (
         <Card title={`${HOLIDAY_YEAR} calendar`} subtitle="Click a highlighted date for details">
           <div className="flex flex-wrap gap-4 mb-4 text-[11px] text-muted">
             <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-navy inline-block" /> Company holiday</span>
