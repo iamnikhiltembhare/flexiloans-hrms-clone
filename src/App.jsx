@@ -19,6 +19,10 @@ import Reports from './pages/Reports.jsx'
 import Settings from './pages/Settings.jsx'
 import Profile from './pages/Profile.jsx'
 import Holidays from './pages/Holidays.jsx'
+import Engage from './pages/Engage.jsx'
+import DocumentCenter from './pages/DocumentCenter.jsx'
+import People from './pages/People.jsx'
+import RequestHub from './pages/RequestHub.jsx'
 import SystemAdmin from './pages/SystemAdmin.jsx'
 import NoAccess from './pages/NoAccess.jsx'
 
@@ -50,7 +54,10 @@ export default function App() {
         <Route path="holidays" element={<Require perm={PERMS.SELF}><Holidays /></Require>} />
         <Route path="leave" element={<Require perm={PERMS.SELF}><Leave /></Require>} />
         <Route path="payroll" element={<Require perm={PERMS.SELF}><Payroll /></Require>} />
-        <Route path="documents" element={<Require perm={PERMS.SELF}><Documents /></Require>} />
+        <Route path="documents" element={<Require perm={PERMS.SELF}><DocumentCenter /></Require>} />
+        <Route path="engage" element={<Require perm={PERMS.SELF}><Engage /></Require>} />
+        <Route path="people" element={<Require perm={PERMS.SELF}><People /></Require>} />
+        <Route path="requests" element={<Require perm={PERMS.SELF}><RequestHub /></Require>} />
         <Route path="performance" element={<Require perm={PERMS.SELF}><Performance /></Require>} />
         <Route path="profile" element={<Require perm={PERMS.SELF}><Profile /></Require>} />
 

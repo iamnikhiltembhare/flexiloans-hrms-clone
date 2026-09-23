@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays, Wallet, FileText,
   Megaphone, Briefcase, Target, LifeBuoy, BarChart3, Settings, User, X, ShieldCheck, CalendarHeart,
+  Radio, Layers, Contact,
 } from 'lucide-react'
 import Logo from './Logo.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -13,13 +14,16 @@ const GROUPS = [
   { title: 'Overview', items: [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, perm: PERMS.SELF },
     { to: '/announcements', label: 'Announcements', icon: Megaphone, perm: PERMS.SELF },
+    { to: '/engage', label: 'Engage', icon: Radio, perm: PERMS.SELF },
   ]},
   { title: 'My Workspace', items: [
     { to: '/attendance', label: 'Attendance', icon: CalendarCheck, perm: PERMS.SELF },
     { to: '/leave', label: 'Leave', icon: CalendarDays, perm: PERMS.SELF },
     { to: '/holidays', label: 'Holiday Calendar', icon: CalendarHeart, perm: PERMS.SELF },
     { to: '/payroll', label: 'Payroll', icon: Wallet, perm: PERMS.SELF },
-    { to: '/documents', label: 'Documents', icon: FileText, perm: PERMS.SELF },
+    { to: '/documents', label: 'Document Center', icon: FileText, perm: PERMS.SELF },
+    { to: '/requests', label: 'Request Hub', icon: Layers, perm: PERMS.SELF },
+    { to: '/people', label: 'People', icon: Contact, perm: PERMS.SELF },
     { to: '/performance', label: 'Performance', icon: Target, perm: PERMS.SELF },
     { to: '/profile', label: 'My Profile', icon: User, perm: PERMS.SELF },
   ]},
