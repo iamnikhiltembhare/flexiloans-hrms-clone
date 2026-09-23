@@ -88,8 +88,9 @@ for numeric data. Tokens live in `tailwind.config.js` and `src/index.css`.
 
 ## Notes
 
-- Interactions are local state only: approving leave, resolving a ticket or
-  submitting a leave request updates the UI and resets on reload.
+- Changes persist in `localStorage` (see `src/lib/persist.js`), so they survive
+  a reload and a browser restart. Storage is per browser and per device and is
+  never shared between people. Settings has a Reset that clears it all.
 - Names, IDs, salaries and documents are fabricated for the demo.
 - To point this at a real API, replace the imports from `src/data/mock.js`
   with fetch calls - the page components take plain arrays and objects.

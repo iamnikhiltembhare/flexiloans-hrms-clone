@@ -5,6 +5,7 @@ import Modal from '../components/Modal.jsx'
 import { requestTypes } from '../data/engage.js'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { usePersistentState } from '../lib/persist.js'
 
 const CATEGORIES = ['All categories', ...new Set(requestTypes.map((r) => r.category))]
 
@@ -14,7 +15,7 @@ export default function RequestHub() {
   const [tab, setTab] = useState('Apply')
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('All categories')
-  const [requests, setRequests] = useState([])
+  const [requests, setRequests] = usePersistentState('hubRequests', [])
   const [pick, setPick] = useState(null)
   const [note, setNote] = useState('')
 

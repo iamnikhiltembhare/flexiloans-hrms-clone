@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import Modal from '../components/Modal.jsx'
 import { PageHeader, Card, Tabs, Table, Badge, Field } from '../components/ui.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { usePersistentState, clearStoredState, storedSize, storageAvailable } from '../lib/persist.js'
 
 function Toggle({ on, onChange }) {
   return (
@@ -33,12 +35,20 @@ export default function Settings() {
   const { toast } = useApp()
   const { user } = useAuth()
   const [tab, setTab] = useState('Preferences')
-  const [prefs, setPrefs] = useState({ email: true, push: false, digest: true, approvals: true, twoFactor: true })
+  const [prefs, setPrefs] = usePersistentState('prefs', { email: true, push: false, digest: true, approvals: true, twoFactor: true })
   const set = (k) => (v) => {
     setPrefs((p) => ({ ...p, [k]: v }))
     toast(LABELS[k] + ' ' + (v ? 'on' : 'off'), 'Preference saved', v ? 'success' : 'info')
   }
   const pick = (label) => (e) => toast(label + ' updated', 'Now set to ' + e.target.value, 'info')
+  const [confirmReset, setConfirmReset] = useState(false)
+  const canStore = storageAvailable()
+
+  const doReset = () => {
+    const n = clearStoredState()
+    toast('Demo data reset', n + ' saved items cleared - reloading', 'warning')
+    setTimeout(() => window.location.reload(), 900)
+  }
 
   return (
     <>
@@ -60,6 +70,21 @@ export default function Settings() {
             </Row>
             <Row title="Tax regime" desc="Applied from the next payroll cycle">
               <select className="input py-1.5 text-xs w-auto" onChange={pick('Tax regime')}><option>New regime</option><option>Old regime</option></select>
+            </Row>
+          </Card>
+
+          <Card title="Data & storage">
+            <Row title="Saved in this browser"
+              desc={canStore
+                ? 'Your changes are kept in this browser so they survive a reload.'
+                : 'This browser is blocking storage, so changes will be lost on reload.'}>
+              <Badge tone={canStore ? 'green' : 'amber'}>{canStore ? storedSize() : 'Unavailable'}</Badge>
+            </Row>
+            <Row title="Scope" desc="Storage is per browser and per device. It is not shared with colleagues.">
+              <Badge tone="gray">Local only</Badge>
+            </Row>
+            <Row title="Reset demo data" desc="Clear everything saved and return to the seeded demo.">
+              <button className="btn-danger" onClick={() => setConfirmReset(true)}>Reset</button>
             </Row>
           </Card>
 
@@ -143,6 +168,22 @@ export default function Settings() {
           />
         </Card>
       )}
+
+      <Modal open={confirmReset} onClose={() => setConfirmReset(false)}
+        title="Reset demo data?"
+        subtitle="This clears everything saved in this browser"
+        footer={<>
+          <button className="btn-ghost" onClick={() => setConfirmReset(false)}>Cancel</button>
+          <button className="btn-danger" onClick={doReset}>Reset everything</button>
+        </>}>
+        <p className="text-[13px] text-[#374151]">
+          Leave requests, tickets, announcements, posts, uploaded documents, starred colleagues,
+          notifications and preferences will go back to their starting values. You will be signed out.
+        </p>
+        <p className="text-[12px] text-muted mt-2">
+          This affects only this browser. Nothing is sent anywhere, and nothing else is touched.
+        </p>
+      </Modal>
     </>
   )
 }

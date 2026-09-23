@@ -6,6 +6,7 @@ import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { departments, locations } from '../data/mock.js'
 import { downloadCSV } from '../lib/download.js'
+import { usePersistentState } from '../lib/persist.js'
 
 const STAGES = ['Sourcing', 'Screening', 'Interviewing', 'Offer', 'Hired']
 const BLANK = { role: '', dept: 'Engineering', location: 'Mumbai HQ', type: 'Permanent', priority: 'Medium', count: '1' }
@@ -14,7 +15,7 @@ export default function Recruitment() {
   const { openings, candidates, advanceCandidate, toast, notify } = useApp()
   const { user } = useAuth()
   const [tab, setTab] = useState('Open requisitions')
-  const [reqs, setReqs] = useState(openings)
+  const [reqs, setReqs] = usePersistentState('requisitions', openings)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
   const [err, setErr] = useState('')

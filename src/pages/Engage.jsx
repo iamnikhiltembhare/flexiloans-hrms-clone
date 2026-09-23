@@ -6,6 +6,7 @@ import { useApp } from '../context/DataContext.jsx'
 import {
   posts as seedPosts, seedComments, feedGroups, feedLocations, feedDepartments,
 } from '../data/engage.js'
+import { usePersistentState } from '../lib/persist.js'
 
 function Accordion({ title, options, value, onChange }) {
   const [open, setOpen] = useState(false)
@@ -35,8 +36,8 @@ export default function Engage() {
   const { user } = useAuth()
   const { toast, notify } = useApp()
 
-  const [feed, setFeed] = useState(seedPosts)
-  const [comments, setComments] = useState(seedComments)
+  const [feed, setFeed] = usePersistentState('engageFeed', seedPosts)
+  const [comments, setComments] = usePersistentState('engageComments', seedComments)
   const [activity, setActivity] = useState('All Activities')
   const [group, setGroup] = useState('All Groups')
   const [location, setLocation] = useState('All Locations')

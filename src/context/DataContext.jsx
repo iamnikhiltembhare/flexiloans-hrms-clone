@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState as useMemoLessState } from 'react'
+import { usePersistentState } from '../lib/persist.js'
 import ToastStack from '../components/Toast.jsx'
 import {
   employees as seedEmployees, leaveRequests as seedLeave, tickets as seedTickets,
@@ -21,16 +22,16 @@ let seq = 100
 const nextId = (prefix) => prefix + ++seq
 
 export function DataProvider({ children }) {
-  const [employees, setEmployees] = useState(seedEmployees)
-  const [leaveRequests, setLeaveRequests] = useState(seedLeave)
-  const [tickets, setTickets] = useState(seedTickets)
-  const [announcements, setAnnouncements] = useState(seedAnnouncements)
-  const [documents, setDocuments] = useState(seedDocuments)
-  const [candidates, setCandidates] = useState(seedCandidates)
-  const [openings] = useState(seedOpenings)
-  const [notifications, setNotifications] = useState(SEED_NOTIFICATIONS)
-  const [toasts, setToasts] = useState([])
-  const [punch, setPunch] = useState({ inAt: '09:34 AM', outAt: null })
+  const [employees, setEmployees] = usePersistentState('employees', seedEmployees)
+  const [leaveRequests, setLeaveRequests] = usePersistentState('leaveRequests', seedLeave)
+  const [tickets, setTickets] = usePersistentState('tickets', seedTickets)
+  const [announcements, setAnnouncements] = usePersistentState('announcements', seedAnnouncements)
+  const [documents, setDocuments] = usePersistentState('documents', seedDocuments)
+  const [candidates, setCandidates] = usePersistentState('candidates', seedCandidates)
+  const [openings] = usePersistentState('openings', seedOpenings)
+  const [notifications, setNotifications] = usePersistentState('notifications', SEED_NOTIFICATIONS)
+  const [toasts, setToasts] = useMemoLessState([])
+  const [punch, setPunch] = usePersistentState('punch', { inAt: '09:34 AM', outAt: null })
 
   const dismiss = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), [])
 

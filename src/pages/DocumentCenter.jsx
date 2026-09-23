@@ -8,6 +8,7 @@ import { documentCategories, letterTypes, letterRequests } from '../data/engage.
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadFile } from '../lib/download.js'
+import { usePersistentState } from '../lib/persist.js'
 
 const ICONS = { payslip: Wallet, tax: FileSpreadsheet, policy: BookOpen, form: FileText }
 const TONES = { payslip: 'cyan', tax: 'green', policy: 'purple', form: 'amber' }
@@ -16,7 +17,7 @@ export default function DocumentCenter() {
   const { documents, addDocument, toast, notify } = useApp()
   const { user } = useAuth()
   const [tab, setTab] = useState('Documents')
-  const [letters, setLetters] = useState(letterRequests)
+  const [letters, setLetters] = usePersistentState('letterRequests', letterRequests)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ type: letterTypes[0], purpose: '' })
   const [category, setCategory] = useState(null)

@@ -5,20 +5,20 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('fl_hrms_user')) } catch { return null }
+    try { return JSON.parse(localStorage.getItem('fl_hrms_v1:user')) } catch { return null }
   })
 
   const login = useCallback((username, password) => {
     const u = authenticate(username, password)
     if (!u) return false
     setUser(u)
-    try { sessionStorage.setItem('fl_hrms_user', JSON.stringify(u)) } catch { /* ignore */ }
+    try { localStorage.setItem('fl_hrms_v1:user', JSON.stringify(u)) } catch { /* ignore */ }
     return true
   }, [])
 
   const logout = useCallback(() => {
     setUser(null)
-    try { sessionStorage.removeItem('fl_hrms_user') } catch { /* ignore */ }
+    try { localStorage.removeItem('fl_hrms_v1:user') } catch { /* ignore */ }
   }, [])
 
   // Permission check used by the sidebar and the route guards.

@@ -17,6 +17,7 @@ import { fetchGoogleHolidays, isConfigured, SYNC_LABEL } from '../lib/googleCale
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadCSV } from '../lib/download.js'
+import { usePersistentState } from '../lib/persist.js'
 
 export default function Holidays() {
   const { addLeaveRequest, toast, notify } = useApp()
@@ -26,7 +27,7 @@ export default function Holidays() {
   const [year, setYear] = useState(HOLIDAY_YEAR)
   const [q, setQ] = useState('')
   const [scope, setScope] = useState('All regions')
-  const [applied, setApplied] = useState([])          // ISO dates taken as optional holidays
+  const [applied, setApplied] = usePersistentState('appliedHolidays', [])          // ISO dates taken as optional holidays
   const [pick, setPick] = useState(null)              // holiday awaiting confirmation
   const [sync, setSync] = useState({ status: 'idle', items: [], error: null })
   const [syncing, setSyncing] = useState(false)
