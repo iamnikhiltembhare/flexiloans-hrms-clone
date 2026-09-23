@@ -3,6 +3,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Clock, CheckCircle2, XCircle, Home, Download, CalendarPlus } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
+import AttendanceInfo from './AttendanceInfo.jsx'
 import { attendanceLog, attendanceSummary, attendanceTrend } from '../data/mock.js'
 import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
 import { Link } from 'react-router-dom'
@@ -13,7 +14,7 @@ const BLANK = { date: '', checkIn: '', checkOut: '', reason: '' }
 
 export default function Attendance() {
   const { toast, notify } = useApp()
-  const [tab, setTab] = useState('My attendance')
+  const [tab, setTab] = useState('Attendance info')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
   const [err, setErr] = useState('')
@@ -54,14 +55,16 @@ export default function Attendance() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
+      {tab !== 'Attendance info' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Present" value={attendanceSummary.present} hint="days this month" icon={CheckCircle2} tone="green" />
         <StatCard label="Absent" value={attendanceSummary.absent} hint="1 unapproved" icon={XCircle} tone="red" />
         <StatCard label="Work from home" value={attendanceSummary.wfh} hint="within policy limit of 8" icon={Home} tone="blue" />
         <StatCard label="Average hours" value={attendanceSummary.avgHours} hint={attendanceSummary.lateMarks + ' late marks'} icon={Clock} tone="cyan" />
-      </div>
+      </div>}
 
-      <Tabs tabs={['My attendance', 'Team view', 'Holiday calendar']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Attendance info', 'My attendance', 'Team view', 'Holiday calendar']} active={tab} onChange={setTab} />
+
+      {tab === 'Attendance info' && <AttendanceInfo />}
 
       {tab === 'My attendance' && (
         <div className="grid gap-4 lg:grid-cols-3">

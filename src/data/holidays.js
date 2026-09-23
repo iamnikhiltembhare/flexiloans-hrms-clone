@@ -48,8 +48,8 @@ export const optionalHolidays = holidayList
   .filter((h) => h.optional)
   .map((h) => ({ ...h, scope: h.scope || 'All India' }))
 
-/** How many optional holidays an employee may take in the year. */
-export const OPTIONAL_HOLIDAY_QUOTA = 2
+/** Restricted Holiday grant: one per year, matching the company policy. */
+export const OPTIONAL_HOLIDAY_QUOTA = 1
 
 export const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

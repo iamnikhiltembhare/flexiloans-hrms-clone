@@ -88,20 +88,36 @@ export default function Leave() {
         </>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 mb-4 stagger">
-        {leaveBalances.map((l) => (
-          <Card key={l.code} bodyClass="p-4">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-faint">{l.type}</p>
-              <span className="text-[10px] font-mono text-faint">{l.code}</span>
-            </div>
-            <p className="mt-1.5 text-2xl font-semibold font-mono" style={{ color: l.color }}>
-              {l.total - l.used}<span className="text-sm text-faint"> / {l.total}</span>
-            </p>
-            <div className="mt-2"><Progress value={l.total ? ((l.total - l.used) / l.total) * 100 : 0} color={l.color} /></div>
-            <p className="text-[10px] text-muted mt-1.5">{l.used} used</p>
-          </Card>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-4 stagger">
+        {leaveBalances.map((l) => {
+          const pct = l.granted ? (l.used / l.granted) * 100 : 0
+          return (
+            <Card key={l.code} bodyClass="p-0" className="overflow-hidden">
+              <div className="flex items-start justify-between gap-2 px-4 pt-3.5">
+                <p className="text-[12px] font-medium text-navy">{l.type}</p>
+                <p className="text-[11px] text-muted whitespace-nowrap">Granted: <span className="font-mono">{l.granted}</span></p>
+              </div>
+
+              <div className="px-4 py-4 text-center">
+                <p className="text-3xl font-semibold font-mono tabular-nums" style={{ color: l.color }}>
+                  {String(l.balance).padStart(2, '0')}
+                </p>
+                <p className="text-[11px] text-muted mt-0.5">Balance</p>
+                <button className="mt-2 text-[12px] text-cyan hover:underline"
+                  onClick={() => toast(l.type, l.used + ' of ' + l.granted + ' consumed - ' + l.balance + ' available', 'info')}>
+                  View Details
+                </button>
+              </div>
+
+              <div className="px-4 pb-3">
+                <p className="text-[10px] text-faint mb-1.5">{l.used} of {l.granted} Consumed</p>
+                <div className="h-1 w-full rounded-full bg-line overflow-hidden">
+                  <div className="h-full rounded-full bar-fill" style={{ width: pct + '%', background: l.color }} />
+                </div>
+              </div>
+            </Card>
+          )
+        })}
       </div>
 
       <Tabs tabs={['My requests', 'Pending my approval', 'Upcoming holidays']} active={tab} onChange={setTab} />

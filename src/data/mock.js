@@ -86,12 +86,15 @@ export const attendanceLog = Array.from({ length: 22 }, (_, i) => {
 })
 
 export const leaveBalances = [
-  { type: 'Casual Leave', code: 'CL', total: 12, used: 5, color: '#00B4D8' },
-  { type: 'Sick Leave', code: 'SL', total: 12, used: 3, color: '#16A34A' },
-  { type: 'Earned Leave', code: 'EL', total: 18, used: 7, color: '#2563EB' },
-  { type: 'Comp Off', code: 'CO', total: 4, used: 1, color: '#7C3AED' },
-  { type: 'Loss of Pay', code: 'LOP', total: 0, used: 0, color: '#DC2626' },
-]
+  { type: 'Privilege Leave', code: 'PL', granted: 21, used: 7, color: '#00B4D8' },
+  { type: 'Casual Or Sick Leave', code: 'CSL', granted: 7, used: 1, color: '#16A34A' },
+  { type: 'Comp - Off', code: 'CO', granted: 3, used: 3, color: '#7C3AED' },
+  { type: 'Restricted Holiday', code: 'RH', granted: 1, used: 0, color: '#D97706' },
+  { type: 'Paternity Leave', code: 'PTL', granted: 10, used: 0, color: '#2563EB' },
+  { type: 'Bereavement Leave', code: 'BL', granted: 7, used: 0, color: '#64748B' },
+  { type: 'Leave Without Pay', code: 'LWP', granted: 30, used: 0, color: '#DC2626' },
+].map((l) => ({ ...l, total: l.granted, balance: l.granted - l.used }))
+
 
 export const leaveRequests = [
   { id: 'LV-2041', employee: 'Rohan Sharma', empId: 'FL1009', type: 'Casual Leave', from: '2026-09-24', to: '2026-09-25', days: 2, reason: 'Family function', status: 'Pending', appliedOn: '2026-09-18' },
