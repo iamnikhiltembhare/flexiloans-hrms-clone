@@ -6,10 +6,13 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  # Public demo build: shows the demo banner and neutral branding.
-  # Remove this, or set it to "false", for a FlexiLoans-branded deploy.
-  VITE_PUBLIC_DEMO = "true"
+  # VITE_PUBLIC_DEMO is deliberately not set here: values in this file
+  # override the Netlify UI, which would force every site into one mode.
+  # Set it per site under Site configuration -> Environment variables:
+  #   demo site: VITE_PUBLIC_DEMO = true   (neutral branding + demo banner)
+  #   live site: leave unset               (FlexiLoans branding)
 
+# Pull-request previews are always the neutral demo build, on either site.
 [context.deploy-preview.environment]
   VITE_PUBLIC_DEMO = "true"
 

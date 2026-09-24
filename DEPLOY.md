@@ -37,9 +37,11 @@ Check the repo is **Private** under Settings -> General.
 2. **Add new site -> Import an existing project -> GitHub**.
 3. Authorise Netlify; choose **Only select repositories** and pick
    `flexiloans-hrms-clone`.
-4. Netlify reads `netlify.toml` and fills in the settings itself: build
-   `npm run build`, publish `dist`, Node 22, `VITE_PUBLIC_DEMO=true`.
-5. **Deploy**. First build takes two to three minutes.
+4. Netlify reads `netlify.toml` and fills in the build settings itself:
+   build `npm run build`, publish `dist`, Node 22.
+5. Before the first deploy, under **Environment variables**, add
+   `VITE_PUBLIC_DEMO` = `true`. This makes it the neutral demo site.
+6. **Deploy**. First build takes two to three minutes.
 
 ### 3. Name it
 
@@ -49,6 +51,19 @@ Check the repo is **Private** under Settings -> General.
 ```
 https://flexiloans-hrms-demo.netlify.app
 ```
+
+### 3b. Add the live (FlexiLoans-branded) site
+
+Repeat step 2 with the **same repository**, but skip step 5: leave
+`VITE_PUBLIC_DEMO` unset. Name it `flexiloans-hrms-live`:
+
+```
+https://flexiloans-hrms-live.netlify.app
+```
+
+Both sites rebuild on every push to `main`. The only difference between them
+is that one environment variable. `netlify.toml` must not set it, because
+values in the file override the Netlify UI.
 
 ### 4. Check it
 
@@ -75,9 +90,9 @@ The site is reachable by anyone with the link even though the repo is private.
 - All data is fabricated; no real records are in the build.
 - The passwords are in the JavaScript bundle. Fine for a demo, but it is not
   authentication.
-- `VITE_PUBLIC_DEMO=true` (set in `netlify.toml`) switches the deploy to a
+- `VITE_PUBLIC_DEMO=true` (set on the demo site in the Netlify UI) switches it to a
   neutral identity - Northbridge Financial - and shows a prototype banner.
-  Remove that variable for a FlexiLoans-branded deploy.
+  The live site leaves it unset and shows FlexiLoans branding.
 - Netlify password protection is a paid feature; on free, keep the URL
   unlisted.
 
