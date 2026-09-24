@@ -4,7 +4,6 @@ import { PageHeader, Card, Badge, Avatar, SearchInput, Select } from '../compone
 import Modal from '../components/Modal.jsx'
 import { departments, locations } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { usePersistentState } from '../lib/persist.js'
 
 /** Compact person row used in both the starred rail and the main list. */
@@ -28,7 +27,6 @@ function PersonRow({ p, starred, onStar, onOpen }) {
 
 export default function People() {
   const { employees, toast } = useApp()
-  const { user } = useAuth()
   const [view, setView] = useState('Directory')
   const [tab, setTab] = useState('Everyone')
   const [q, setQ] = useState('')

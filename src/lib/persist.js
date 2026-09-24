@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Everything the demo remembers lives under this prefix. Bump the version
 // when a stored shape changes so old data is ignored rather than crashing.

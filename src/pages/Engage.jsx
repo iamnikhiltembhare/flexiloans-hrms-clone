@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Heart, MessageCircle, Send, Image, Search, ChevronDown, Sparkles } from 'lucide-react'
-import { PageHeader, Card, Badge, Avatar, SearchInput } from '../components/ui.jsx'
+import { Heart, MessageCircle, Send, Image, ChevronDown, Sparkles } from 'lucide-react'
+import { PageHeader, Card, Avatar, SearchInput } from '../components/ui.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import {

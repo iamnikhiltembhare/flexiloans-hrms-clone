@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
-  ClipboardCheck, CalendarDays, Wallet, Zap, FileSpreadsheet, Receipt,
+  ClipboardCheck, Wallet, FileSpreadsheet, Receipt,
   Activity, ArrowRight, PartyPopper,
 } from 'lucide-react'
 import { PageHeader, Card, Badge } from '../../components/ui.jsx'

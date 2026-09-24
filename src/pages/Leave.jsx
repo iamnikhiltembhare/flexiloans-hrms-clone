@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Check, X, Download, ArrowUpRight } from 'lucide-react'
-import { PageHeader, Card, Table, Badge, Tabs, Progress, statusTone } from '../components/ui.jsx'
+import { PageHeader, Card, Table, Badge, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { leaveBalances } from '../data/mock.js'
 import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'

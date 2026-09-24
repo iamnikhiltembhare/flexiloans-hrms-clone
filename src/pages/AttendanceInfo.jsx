@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, LayoutGrid, List, Clock, Timer, AlertTriangle } from 'lucide-react'
 import { Card, StatCard, Badge, Table } from '../components/ui.jsx'
 import { buildMonth, monthSummary, SHIFT } from '../data/attendance.js'
-import { companyHolidays, MONTHS, WEEKDAYS, prettyDate } from '../data/holidays.js'
+import { companyHolidays, MONTHS, WEEKDAYS } from '../data/holidays.js'
 
 const STATUS_STYLE = {
   P: 'bg-[rgba(22,163,74,0.12)] text-[#16A34A]',

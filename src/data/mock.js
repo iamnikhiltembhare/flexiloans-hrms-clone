@@ -2,28 +2,6 @@ import { BRAND } from '../lib/brand.js'
 
 // Mock dataset for the FlexiLoans HRMS clone. No backend required.
 
-export const currentUser = {
-  id: 'FL0001',
-  name: 'System Administrator',
-  username: 'admin',
-  email: 'admin@' + BRAND.emailDomain,
-  designation: 'System Administrator',
-  department: 'IT & Systems',
-  location: 'Mumbai HQ',
-  manager: 'Aarti Deshmukh',
-  joinDate: '2022-04-11',
-  role: 'Admin',
-  phone: '+91 98200 41042',
-  bloodGroup: 'B+',
-  dob: '1993-08-17',
-  gender: 'Male',
-  employmentType: 'Permanent',
-  grade: 'M3',
-  bank: 'HDFC Bank 4417',
-  pan: 'ABKPT****J',
-  uan: '1012****3388',
-}
-
 const firstNames = ['Aarti','Rohan','Sneha','Imran','Priya','Karthik','Meera','Vikram','Ananya','Rahul','Divya','Sameer','Nikita','Arjun','Farah','Deepak','Ishita','Manish','Pooja','Tanmay','Ritu','Suresh','Neha','Gaurav','Shruti','Aditya','Kavya','Nilesh','Sanjana','Harsh']
 const lastNames = ['Deshmukh','Sharma','Iyer','Shaikh','Nair','Reddy','Kulkarni','Singh','Bose','Menon','Patel','Joshi','Rane','Malhotra','Khan','Chawla','Verma','Pillai','Gupta','Desai']
 export const departments = ['Product','Engineering','Credit & Risk','Sales','Collections','Operations','Finance','Human Resources','Marketing','Legal & Compliance']
@@ -96,7 +74,6 @@ export const leaveBalances = [
   { type: 'Bereavement Leave', code: 'BL', granted: 7, used: 0, color: '#475569', bar: '#64748B' },
   { type: 'Leave Without Pay', code: 'LWP', granted: 30, used: 0, color: '#B91C1C', bar: '#DC2626' },
 ].map((l) => ({ ...l, bar: l.bar || l.color, total: l.granted, balance: l.granted - l.used }))
-
 
 export const leaveRequests = [
   { id: 'LV-2041', employee: 'Rohan Sharma', empId: 'FL1009', type: 'Casual Leave', from: '2026-09-24', to: '2026-09-25', days: 2, reason: 'Family function', status: 'Pending', appliedOn: '2026-09-18' },
@@ -235,13 +212,6 @@ export const anniversaries = [
   { name: 'Aarti Deshmukh', years: 5, date: 'Sep 23' },
   { name: 'Sameer Joshi', years: 3, date: 'Sep 25' },
   { name: 'Neha Verma', years: 1, date: 'Sep 29' },
-]
-
-export const pendingApprovals = [
-  { type: 'Leave', detail: '3 leave requests awaiting your action', count: 3, to: '/leave' },
-  { type: 'Attendance', detail: '2 regularisation requests', count: 2, to: '/attendance' },
-  { type: 'Reimbursement', detail: '4 expense claims pending', count: 4, to: '/helpdesk' },
-  { type: 'Offer approval', detail: '1 offer awaiting sign-off', count: 1, to: '/recruitment' },
 ]
 
 export const INR = (n) => '₹' + Number(n).toLocaleString('en-IN')

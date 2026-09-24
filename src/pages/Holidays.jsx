@@ -4,8 +4,7 @@ import {
   Info, CloudOff, Cloud, MapPin,
 } from 'lucide-react'
 import {
-  PageHeader, Card, Table, Badge, StatCard, Tabs, SearchInput, Select, statusTone,
-} from '../components/ui.jsx'
+  PageHeader, Card, Table, Badge, StatCard, Tabs, SearchInput, Select, } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import YearGrid from '../components/YearGrid.jsx'
 import HolidayMonths from '../components/HolidayMonths.jsx'
