@@ -129,3 +129,21 @@ bundled list and says so. Other regions are available in
 Note that the API key would be visible in the client bundle. That is acceptable
 for a referrer-restricted, read-only public-calendar key; anything broader
 belongs behind a server.
+
+
+## Deploying a live demo
+
+`DEPLOY.md` has the step-by-step. Short version: the repo stays **private** and
+Netlify builds it on every push to `main`.
+
+GitHub Pages is configured too (`.github/workflows/deploy.yml`) but only works
+once the repo is public, or on a GitHub Pro / Team plan - Pages cannot publish
+from a private repo on the free plan.
+
+### Public demo build
+
+Setting `VITE_PUBLIC_DEMO=true` at build time (done for you in `netlify.toml`)
+switches the app to a neutral identity - Northbridge Financial, a
+`northbridge.example` email domain - and shows a banner on the login screen and
+under the topbar making clear it is a prototype with fabricated data. Local and
+unflagged builds keep the FlexiLoans branding untouched.

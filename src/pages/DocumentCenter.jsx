@@ -9,6 +9,7 @@ import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadFile } from '../lib/download.js'
 import { usePersistentState } from '../lib/persist.js'
+import { BRAND } from '../lib/brand.js'
 
 const ICONS = { payslip: Wallet, tax: FileSpreadsheet, policy: BookOpen, form: FileText }
 const TONES = { payslip: 'cyan', tax: 'green', policy: 'purple', form: 'amber' }
@@ -32,7 +33,7 @@ export default function DocumentCenter() {
 
   const grab = (name) => {
     downloadFile(name.replace(/\s+/g, '-').toLowerCase() + '.txt',
-      'FlexiLoans HRMS demo document\n\n' + name + '\nIssued to: ' + user.name + '\n\nPlaceholder content from the demo build.')
+      BRAND.company + ' HRMS demo document\n\n' + name + '\nIssued to: ' + user.name + '\n\nPlaceholder content from the demo build.')
     toast('Download started', name + ' (demo placeholder)', 'info')
   }
 

@@ -1,3 +1,5 @@
+import { BRAND } from '../lib/brand.js'
+
 export default function Logo({ variant = 'light', size = 28 }) {
   const mark = variant === 'light' ? '#FFFFFF' : '#1B365D'
   return (
@@ -8,10 +10,10 @@ export default function Logo({ variant = 'light', size = 28 }) {
       </svg>
       <span className="leading-tight">
         <span className="block text-[15px] font-bold tracking-tight" style={{ color: mark }}>
-          FLEXI<span style={{ color: '#00B4D8' }}>LOANS</span>
+          {BRAND.word1}<span style={{ color: '#00B4D8' }}>{BRAND.word2}</span>
         </span>
         <span className="block text-[8px] tracking-[0.14em] uppercase" style={{ color: variant === 'light' ? 'rgba(255,255,255,0.55)' : '#6B7280' }}>
-          Human Resources
+          {BRAND.tagline}
         </span>
       </span>
     </span>

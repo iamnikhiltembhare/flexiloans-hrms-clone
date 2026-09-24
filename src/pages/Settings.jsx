@@ -3,6 +3,7 @@ import Modal from '../components/Modal.jsx'
 import { PageHeader, Card, Tabs, Table, Badge, Field } from '../components/ui.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { BRAND } from '../lib/brand.js'
 import { usePersistentState, clearStoredState, storedSize, storageAvailable } from '../lib/persist.js'
 
 function Toggle({ on, onChange }) {
@@ -130,8 +131,8 @@ export default function Settings() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Company details">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Legal entity" value="Epimoney Private Limited" />
-              <Field label="Brand" value="FlexiLoans" />
+              <Field label="Legal entity" value={BRAND.legalEntity} />
+              <Field label="Brand" value={BRAND.company} />
               <Field label="Registered office" value="Mumbai, Maharashtra" />
               <Field label="CIN" value="U65990MH2015PTC****" />
               <Field label="PF establishment code" value="MHBAN****" />

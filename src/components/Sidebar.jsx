@@ -7,6 +7,7 @@ import {
 import Logo from './Logo.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { PERMS } from '../data/accounts.js'
+import { BRAND } from '../lib/brand.js'
 
 // Every nav item declares the permission it needs. A group disappears when
 // none of its items are permitted for the signed-in role.
@@ -87,7 +88,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="px-4 py-3 border-t border-white/10 shrink-0">
           <p className="text-[10px] text-white/50">Signed in as</p>
           <p className="text-[11px] text-white font-medium truncate">{user?.role}</p>
-          <p className="text-[10px] text-white/35 mt-1.5">FlexiLoans HRMS - v1.0 demo</p>
+          <p className="text-[10px] text-white/35 mt-1.5">{BRAND.company} HRMS - v1.0 demo</p>
         </div>
       </aside>
     </>

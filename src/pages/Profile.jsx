@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import Modal from '../components/Modal.jsx'
 import { leaveBalances, payslips, INR } from '../data/mock.js'
+import { BRAND } from '../lib/brand.js'
 
 export default function Profile() {
   const { user } = useAuth()
@@ -15,7 +16,7 @@ export default function Profile() {
 
   return (
     <>
-      <PageHeader title="My profile" subtitle="Your employee record at FlexiLoans" />
+      <PageHeader title="My profile" subtitle={"Your employee record at " + BRAND.company} />
 
       <Card className="mb-4" bodyClass="p-5">
         <div className="flex flex-wrap items-center gap-4">

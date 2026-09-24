@@ -18,6 +18,7 @@ import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadCSV } from '../lib/download.js'
 import { usePersistentState } from '../lib/persist.js'
+import { BRAND } from '../lib/brand.js'
 
 export default function Holidays() {
   const { addLeaveRequest, toast, notify } = useApp()
@@ -130,8 +131,8 @@ export default function Holidays() {
             {googleLive
               ? ` - ${sync.items.length} entries from the public "Holidays in India" calendar.`
               : isConfigured()
-                ? ` ${sync.error || ''} The published FlexiLoans ${HOLIDAY_YEAR} calendar is shown instead.`
-                : ` Showing the published FlexiLoans ${HOLIDAY_YEAR} calendar. Add a Google Calendar API key as VITE_GOOGLE_API_KEY to also pull the public India holiday feed.`}
+                ? ` ${sync.error || ''} The published ${BRAND.company} ${HOLIDAY_YEAR} calendar is shown instead.`
+                : ` Showing the published ${BRAND.company} ${HOLIDAY_YEAR} calendar. Add a Google Calendar API key as VITE_GOOGLE_API_KEY to also pull the public India holiday feed.`}
           </p>
         </div>
       </div>

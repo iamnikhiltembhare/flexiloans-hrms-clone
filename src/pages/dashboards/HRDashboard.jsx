@@ -10,6 +10,7 @@ import { PageHeader, Card, StatCard, Badge, Avatar, Table, statusTone } from '..
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useApp } from '../../context/DataContext.jsx'
 import { headcountTrend, deptDistribution, attendanceTrend, birthdays, anniversaries } from '../../data/mock.js'
+import { BRAND } from '../../lib/brand.js'
 
 const PIE = ['#1B365D', '#00B4D8', '#2563EB', '#7C3AED', '#16A34A', '#D97706', '#DC2626', '#0097B2', '#64748B', '#9333EA']
 const tip = { contentStyle: { borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 } }
@@ -44,7 +45,7 @@ export default function HRDashboard() {
     <>
       <PageHeader
         title={greeting + ', ' + (user?.shortName || String(user?.name || '').split(' ')[0])}
-        subtitle="People operations overview for FlexiLoans"
+        subtitle={"People operations overview for " + BRAND.company}
         actions={<Link to="/employees" className="btn-primary"><UserPlus size={13} /> Employee directory</Link>}
       />
 

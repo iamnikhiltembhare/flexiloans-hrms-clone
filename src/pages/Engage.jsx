@@ -7,6 +7,7 @@ import {
   posts as seedPosts, seedComments, feedGroups, feedLocations, feedDepartments,
 } from '../data/engage.js'
 import { usePersistentState } from '../lib/persist.js'
+import { BRAND } from '../lib/brand.js'
 
 function Accordion({ title, options, value, onChange }) {
   const [open, setOpen] = useState(false)
@@ -90,7 +91,7 @@ export default function Engage() {
 
   return (
     <>
-      <PageHeader title="Engage" subtitle="What is happening across FlexiLoans" />
+      <PageHeader title="Engage" subtitle={"What is happening across " + BRAND.company} />
 
       {/* Composer */}
       <Card className="mb-4" bodyClass="p-4">

@@ -1,10 +1,12 @@
+import { BRAND } from '../lib/brand.js'
+
 // Mock dataset for the FlexiLoans HRMS clone. No backend required.
 
 export const currentUser = {
   id: 'FL0001',
   name: 'System Administrator',
   username: 'admin',
-  email: 'admin@flexiloans.com',
+  email: 'admin@' + BRAND.emailDomain,
   designation: 'System Administrator',
   department: 'IT & Systems',
   location: 'Mumbai HQ',
@@ -49,7 +51,7 @@ export const employees = Array.from({ length: 64 }, (_, i) => {
   return {
     id: 'FL' + (1001 + i),
     name: first + ' ' + last,
-    email: first.toLowerCase() + '.' + last.toLowerCase() + '@flexiloans.com',
+    email: first.toLowerCase() + '.' + last.toLowerCase() + '@' + BRAND.emailDomain,
     phone: '+91 9' + String(80000000 + Math.floor(Math.abs(seeded(i + 11)) * 9999999)).slice(0, 9),
     department: dept,
     designation: pick(designations[dept], i + 5),
@@ -268,7 +270,7 @@ export const auditLog = [
   { id: 'AU-9909', actor: 'System Administrator', action: 'Settings updated', target: 'WFH allowance 8 to 10 days', ip: '10.22.4.18', at: '2026-09-21 18:20' },
   { id: 'AU-9908', actor: 'Manish Pillai', action: 'Requisition raised', target: 'REQ-309 - Credit Analyst', ip: '10.22.9.77', at: '2026-09-21 16:05' },
   { id: 'AU-9907', actor: 'Aarti Deshmukh', action: 'Employee added', target: 'FL1121 - Kavya Menon', ip: '10.22.4.51', at: '2026-09-21 14:33' },
-  { id: 'AU-9906', actor: 'System', action: 'Failed sign-in (3 attempts)', target: 'unknown@flexiloans.com', ip: '103.44.18.2', at: '2026-09-21 11:58' },
+  { id: 'AU-9906', actor: 'System', action: 'Failed sign-in (3 attempts)', target: 'unknown@' + BRAND.emailDomain, ip: '103.44.18.2', at: '2026-09-21 11:58' },
   { id: 'AU-9905', actor: 'Rakesh Menon', action: 'Report exported', target: 'Payroll register August 2026', ip: '10.22.4.9', at: '2026-09-21 10:14' },
 ]
 

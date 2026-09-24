@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
 import { ACCOUNTS, ROLES } from '../data/accounts.js'
+import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
 
 export default function Login() {
   const { login } = useAuth()
@@ -49,6 +50,15 @@ export default function Login() {
       <div className="layer-card relative w-full max-w-sm rise">
         <div className="flex justify-center mb-8 drift-slow"><Logo variant="dark" size={40} /></div>
 
+        {IS_PUBLIC_DEMO && (
+          <div className="mb-5 rounded-card border-l-[3px] border-[#D97706] bg-[rgba(217,119,6,0.08)] px-3.5 py-2.5">
+            <p className="text-[12px] text-[#374151]">
+              <strong className="text-navy">Demonstration build.</strong> A portfolio prototype with
+              fabricated data. The sign-in below is not real authentication.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={submit} className="space-y-3">
           <div className="relative">
             <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy/50" />
@@ -81,7 +91,7 @@ export default function Login() {
           <li><a href="#" className="text-navy underline hover:text-cyan">Forgot your username?</a></li>
         </ul>
 
-        <p className="mt-8 text-center text-[12px] text-muted">Powered by uKnowva</p>
+        <p className="mt-8 text-center text-[12px] text-muted">{BRAND.poweredBy}</p>
 
         <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">Demo build - test logins</p>

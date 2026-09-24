@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx'
 import { departments, locations } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
+import { BRAND } from '../lib/brand.js'
 
 const BLANK = { name: '', email: '', phone: '', department: 'Product', designation: '', location: 'Mumbai HQ', gender: 'Female' }
 
@@ -40,7 +41,7 @@ export default function Employees() {
   const save = (e) => {
     e.preventDefault()
     if (!form.name.trim() || !form.designation.trim()) { setErr('Name and designation are required.'); return }
-    const email = form.email.trim() || form.name.trim().toLowerCase().replace(/\s+/g, '.') + '@flexiloans.com'
+    const email = form.email.trim() || form.name.trim().toLowerCase().replace(/\s+/g, '.') + '@' + BRAND.emailDomain
     addEmployee({ ...form, name: form.name.trim(), email })
     notify({ title: 'New employee added', detail: form.name.trim() + ' joined ' + form.department, to: '/employees', kind: 'task' })
     toast('Employee added', form.name.trim() + ' is now in the directory')

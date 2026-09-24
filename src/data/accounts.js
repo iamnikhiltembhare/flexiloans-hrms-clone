@@ -1,3 +1,5 @@
+import { BRAND } from '../lib/brand.js'
+
 // Role and account registry for the FlexiLoans HRMS demo.
 // Credentials live in the client bundle on purpose: this is a front-end
 // prototype with fabricated data and no backend. Replace `authenticate()`
@@ -44,7 +46,7 @@ export const ACCOUNTS = [
     password: 'Admin@2026',
     role: 'super_admin',
     profile: {
-      id: 'FL0001', name: 'System Administrator', shortName: 'Admin', email: 'admin@flexiloans.com',
+      id: 'FL0001', name: 'System Administrator', shortName: 'Admin', email: 'admin@' + BRAND.emailDomain,
       designation: 'System Administrator', department: 'IT & Systems', location: 'Mumbai HQ',
       manager: 'Not applicable', joinDate: '2021-01-01', phone: 'Not assigned',
       bloodGroup: 'Not assigned', dob: 'Not assigned', gender: 'Not assigned',
@@ -57,7 +59,7 @@ export const ACCOUNTS = [
     password: 'FlexiHR@2026',
     role: 'hr',
     profile: {
-      id: 'FL1008', name: 'Aarti Deshmukh', email: 'aarti.deshmukh@flexiloans.com',
+      id: 'FL1008', name: 'Aarti Deshmukh', email: 'aarti.deshmukh@' + BRAND.emailDomain,
       designation: 'HR Business Partner', department: 'Human Resources', location: 'Mumbai HQ',
       manager: 'Rakesh Menon', joinDate: '2021-06-14', phone: '+91 98200 11008',
       bloodGroup: 'O+', dob: '1990-02-09', gender: 'Female', employmentType: 'Permanent',
@@ -69,7 +71,7 @@ export const ACCOUNTS = [
     password: 'FlexiEmp@2026',
     role: 'employee',
     profile: {
-      id: 'FL1009', name: 'Rohan Sharma', email: 'rohan.sharma@flexiloans.com',
+      id: 'FL1009', name: 'Rohan Sharma', email: 'rohan.sharma@' + BRAND.emailDomain,
       designation: 'Software Engineer', department: 'Engineering', location: 'Pune',
       manager: 'Arjun Shaikh', joinDate: '2023-09-04', phone: '+91 98200 31009',
       bloodGroup: 'A+', dob: '1996-11-23', gender: 'Male', employmentType: 'Permanent',

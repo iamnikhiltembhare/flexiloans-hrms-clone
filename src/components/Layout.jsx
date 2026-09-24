@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
+import DemoBanner from './DemoBanner.jsx'
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
@@ -11,6 +12,7 @@ export default function Layout() {
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onMenu={() => setOpen(true)} />
+        <DemoBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {/* keyed on the path so each page fades in on navigation */}
           <div key={location.pathname} className="page-enter">
