@@ -90,7 +90,7 @@ export default function SystemAdmin() {
             rows={roleMatrix}
           />
           <div className="m-4 rounded-lg border-l-[3px] border-cyan bg-cyan-bg px-3.5 py-3">
-            <p className="text-[12px] text-[#374151]">
+            <p className="text-[12px] text-[#2B3445]">
               Permissions are defined in <code className="font-mono text-[11px]">src/data/accounts.js</code> and
               enforced in two places: the sidebar hides modules a role cannot reach, and each route is wrapped
               in a guard so a typed URL lands on the access-denied screen.

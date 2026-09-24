@@ -88,14 +88,14 @@ export const attendanceLog = Array.from({ length: 22 }, (_, i) => {
 })
 
 export const leaveBalances = [
-  { type: 'Privilege Leave', code: 'PL', granted: 21, used: 7, color: '#00B4D8' },
-  { type: 'Casual Or Sick Leave', code: 'CSL', granted: 7, used: 1, color: '#16A34A' },
-  { type: 'Comp - Off', code: 'CO', granted: 3, used: 3, color: '#7C3AED' },
-  { type: 'Restricted Holiday', code: 'RH', granted: 1, used: 0, color: '#D97706' },
-  { type: 'Paternity Leave', code: 'PTL', granted: 10, used: 0, color: '#2563EB' },
-  { type: 'Bereavement Leave', code: 'BL', granted: 7, used: 0, color: '#64748B' },
-  { type: 'Leave Without Pay', code: 'LWP', granted: 30, used: 0, color: '#DC2626' },
-].map((l) => ({ ...l, total: l.granted, balance: l.granted - l.used }))
+  { type: 'Privilege Leave', code: 'PL', granted: 21, used: 7, color: '#00708A', bar: '#00B4D8' },
+  { type: 'Casual Or Sick Leave', code: 'CSL', granted: 7, used: 1, color: '#15803D', bar: '#16A34A' },
+  { type: 'Comp - Off', code: 'CO', granted: 3, used: 3, color: '#6D28D9', bar: '#7C3AED' },
+  { type: 'Restricted Holiday', code: 'RH', granted: 1, used: 0, color: '#B45309', bar: '#D97706' },
+  { type: 'Paternity Leave', code: 'PTL', granted: 10, used: 0, color: '#1D4ED8', bar: '#2563EB' },
+  { type: 'Bereavement Leave', code: 'BL', granted: 7, used: 0, color: '#475569', bar: '#64748B' },
+  { type: 'Leave Without Pay', code: 'LWP', granted: 30, used: 0, color: '#B91C1C', bar: '#DC2626' },
+].map((l) => ({ ...l, bar: l.bar || l.color, total: l.granted, balance: l.granted - l.used }))
 
 
 export const leaveRequests = [

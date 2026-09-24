@@ -53,8 +53,8 @@ export default function DocumentCenter() {
         <div className="flex items-center gap-6 px-6 py-5 bg-[linear-gradient(100deg,#E0F7FA_0%,#F5F7FA_60%)]">
           <div className="min-w-0 flex-1">
             <h2 className="text-[17px] font-semibold text-navy">We've got it sorted for you!</h2>
-            <p className="text-[13px] text-[#374151] mt-1.5">All documents are now in one place.</p>
-            <p className="text-[13px] text-[#374151]">
+            <p className="text-[13px] text-[#2B3445] mt-1.5">All documents are now in one place.</p>
+            <p className="text-[13px] text-[#2B3445]">
               You can request a new letter if you don't find the one you were looking for.
             </p>
           </div>
@@ -89,7 +89,7 @@ export default function DocumentCenter() {
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-line">
                     <span className="text-[11px] text-faint font-mono">{c.count} files</span>
-                    <button className="flex items-center gap-1 text-[12px] text-cyan hover:underline"
+                    <button className="flex items-center gap-1 text-[12px] text-cyan-ink font-medium hover:underline"
                       onClick={() => setCategory(c)}>
                       View All <ChevronRight size={12} />
                     </button>

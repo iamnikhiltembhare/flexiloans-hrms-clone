@@ -12,7 +12,7 @@ export default function EmployeeDetail() {
   const [tab, setTab] = useState('Overview')
 
   if (!emp) return (
-    <Card><p className="text-[13px] text-muted">No employee found with ID {id}. <Link className="text-cyan hover:underline" to="/employees">Back to directory</Link></p></Card>
+    <Card><p className="text-[13px] text-muted">No employee found with ID {id}. <Link className="text-cyan-ink font-medium hover:underline" to="/employees">Back to directory</Link></p></Card>
   )
 
   return (
@@ -108,7 +108,7 @@ export default function EmployeeDetail() {
             {goals.map((g) => (
               <div key={g.title}>
                 <div className="flex justify-between gap-3 text-[13px] mb-1.5">
-                  <span className="text-[#374151]">{g.title}</span>
+                  <span className="text-[#2B3445]">{g.title}</span>
                   <span className="font-mono text-navy shrink-0">{g.progress}%</span>
                 </div>
                 <Progress value={g.progress} color={g.status === 'On Track' ? '#16A34A' : g.status === 'At Risk' ? '#D97706' : '#DC2626'} />

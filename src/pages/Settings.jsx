@@ -177,7 +177,7 @@ export default function Settings() {
           <button className="btn-ghost" onClick={() => setConfirmReset(false)}>Cancel</button>
           <button className="btn-danger" onClick={doReset}>Reset everything</button>
         </>}>
-        <p className="text-[13px] text-[#374151]">
+        <p className="text-[13px] text-[#2B3445]">
           Leave requests, tickets, announcements, posts, uploaded documents, starred colleagues,
           notifications and preferences will go back to their starting values. You will be signed out.
         </p>

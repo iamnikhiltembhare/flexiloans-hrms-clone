@@ -41,7 +41,7 @@ export default function HolidayMonths({ year, holidays, appliedDates, onApply, q
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className={'block text-[13px] leading-snug ' + (h.optional ? 'text-[#374151]' : 'text-navy font-medium')}>
+                      <span className={'block text-[13px] leading-snug ' + (h.optional ? 'text-[#2B3445]' : 'text-navy font-medium')}>
                         {h.name}
                       </span>
                       {weekendDay && (
@@ -57,7 +57,7 @@ export default function HolidayMonths({ year, holidays, appliedDates, onApply, q
                       ) : (
                         <button
                           onClick={() => onApply(h)}
-                          className="shrink-0 text-[12px] font-medium text-cyan hover:text-cyan-hover hover:underline
+                          className="shrink-0 text-[12px] font-semibold text-cyan-ink hover:text-cyan-btnHover hover:underline
                                      transition-transform duration-150 active:scale-95 disabled:text-faint disabled:no-underline"
                           title={quotaLeft <= 0 ? 'Optional holiday quota used - needs manager approval' : undefined}>
                           Apply

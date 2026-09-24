@@ -9,7 +9,7 @@ export default function DemoBanner() {
   return (
     <div className="shrink-0 flex items-start gap-2 px-4 py-2 bg-[rgba(217,119,6,0.1)] border-b border-[#D97706]/30">
       <Info size={14} className="mt-0.5 shrink-0 text-[#D97706]" />
-      <p className="text-[12px] text-[#374151] flex-1">
+      <p className="text-[12px] text-[#2B3445] flex-1">
         <strong className="text-navy">Demonstration build.</strong> This is a
         portfolio prototype, not a real HR system. Every employee, salary,
         document and post is fabricated, the sign-in is not real authentication,

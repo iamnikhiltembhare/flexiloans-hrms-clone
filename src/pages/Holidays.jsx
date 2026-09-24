@@ -126,7 +126,7 @@ export default function Holidays() {
         {googleLive ? <Cloud size={15} className="mt-0.5 shrink-0 text-[#16A34A]" />
                     : <CloudOff size={15} className="mt-0.5 shrink-0 text-[#0097B2]" />}
         <div className="min-w-0">
-          <p className="text-[12px] text-[#374151]">
+          <p className="text-[12px] text-[#2B3445]">
             <strong className="text-navy">{SYNC_LABEL[sync.status] || 'Loading holidays...'}</strong>
             {googleLive
               ? ` - ${sync.items.length} entries from the public "Holidays in India" calendar.`

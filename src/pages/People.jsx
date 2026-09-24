@@ -206,7 +206,7 @@ export default function People() {
               ['Location', open.location], ['Reporting to', open.manager], ['Date of joining', open.joinDate]].map(([k, v]) => (
               <div key={k}>
                 <p className="text-[10px] uppercase tracking-wide text-faint">{k}</p>
-                <p className="text-[13px] text-[#374151] mt-0.5">{v}</p>
+                <p className="text-[13px] text-[#2B3445] mt-0.5">{v}</p>
               </div>
             ))}
           </div>

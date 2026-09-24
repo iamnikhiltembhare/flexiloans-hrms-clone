@@ -119,7 +119,7 @@ export default function Attendance() {
 
       {tab === 'Holiday calendar' && (
         <Card title="Holiday calendar 2026" subtitle="Declared holidays for all India locations" bodyClass="p-0"
-          actions={<Link to="/holidays" className="text-[11px] text-cyan hover:underline">Open full calendar</Link>}>
+          actions={<Link to="/holidays" className="text-[11px] text-cyan-ink font-medium hover:underline">Open full calendar</Link>}>
           <Table
             columns={[
               { key: 'date', header: 'Date', mono: true, render: (r) => prettyDate(r.date) },

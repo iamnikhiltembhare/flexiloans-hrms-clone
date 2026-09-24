@@ -47,7 +47,7 @@ function Month({ year, month, label, marks, onPick }) {
             : mark?.kind === 'company' ? 'bg-navy text-white font-semibold'
             : mark?.kind === 'optional' ? 'bg-cyan-bg text-[#0097B2] font-medium ring-1 ring-cyan/40'
             : weekend ? 'text-faint'
-            : 'text-[#374151]'
+            : 'text-[#2B3445]'
 
           return (
             <button

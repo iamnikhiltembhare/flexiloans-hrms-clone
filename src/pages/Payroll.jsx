@@ -154,7 +154,7 @@ export default function Payroll() {
             ))}
           </div>
           <div className="mt-4 rounded-lg border-l-[3px] border-cyan bg-cyan-bg px-3.5 py-3">
-            <p className="text-[12px] text-[#374151]">
+            <p className="text-[12px] text-[#2B3445]">
               You are on the <strong>new tax regime</strong>. Deductions under 80C and 80D do not reduce taxable income under this regime.
               Switch regimes from Settings before the declaration window closes if you want them applied.
             </p>

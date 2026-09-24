@@ -70,7 +70,7 @@ export default function Topbar({ onMenu }) {
   }
 
   return (
-    <header className="h-14 shrink-0 bg-white/85 backdrop-blur-md border-b border-line flex items-center gap-3 px-4 sticky top-0 z-30">
+    <header className="h-14 shrink-0 bg-white border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
       <button className="lg:hidden text-navy" onClick={onMenu} aria-label="Open menu"><Menu size={20} /></button>
 
       <div ref={searchRef} className="hidden md:block relative w-72">
@@ -146,7 +146,7 @@ export default function Topbar({ onMenu }) {
                 <header className="flex items-center justify-between px-3.5 py-2.5 border-b border-line">
                   <h3 className="h3">Notifications {unread > 0 && <span className="text-muted font-normal">({unread} new)</span>}</h3>
                   {notifications.length > 0 && (
-                    <button onClick={markAllRead} className="flex items-center gap-1 text-[11px] text-cyan hover:underline">
+                    <button onClick={markAllRead} className="flex items-center gap-1 text-[11px] text-cyan-ink font-medium hover:underline">
                       <CheckCheck size={12} /> Mark all read
                     </button>
                   )}
@@ -198,9 +198,9 @@ export default function Topbar({ onMenu }) {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
               <div className="absolute right-0 mt-1.5 w-52 card p-1 z-20 origin-top-right" style={{ animation: 'fl-pop .2s cubic-bezier(.22,.8,.3,1) both' }}>
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#374151] rounded-lg hover:bg-canvas"
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#2B3445] rounded-lg hover:bg-canvas"
                   onClick={() => { setMenu(false); navigate('/profile') }}><User size={14} /> My profile</button>
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#374151] rounded-lg hover:bg-canvas"
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#2B3445] rounded-lg hover:bg-canvas"
                   onClick={() => { setMenu(false); navigate('/settings') }}><Clock size={14} /> Settings</button>
                 <div className="h-px bg-line my-1" />
                 <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#DC2626] rounded-lg hover:bg-[rgba(220,38,38,0.08)]"

@@ -147,7 +147,7 @@ export default function RequestHub() {
                 placeholder="Anything your approver should know" />
             </div>
             <div className="rounded-lg border-l-[3px] border-cyan bg-cyan-bg px-3.5 py-2.5">
-              <p className="text-[12px] text-[#374151]">Goes to <strong className="text-navy">{user.manager}</strong> for approval.</p>
+              <p className="text-[12px] text-[#2B3445]">Goes to <strong className="text-navy">{user.manager}</strong> for approval.</p>
             </div>
           </div>
         )}

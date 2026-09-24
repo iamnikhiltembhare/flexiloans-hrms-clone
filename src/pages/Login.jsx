@@ -52,7 +52,7 @@ export default function Login() {
 
         {IS_PUBLIC_DEMO && (
           <div className="mb-5 rounded-card border-l-[3px] border-[#D97706] bg-[rgba(217,119,6,0.08)] px-3.5 py-2.5">
-            <p className="text-[12px] text-[#374151]">
+            <p className="text-[12px] text-[#2B3445]">
               <strong className="text-navy">Demonstration build.</strong> A portfolio prototype with
               fabricated data. The sign-in below is not real authentication.
             </p>

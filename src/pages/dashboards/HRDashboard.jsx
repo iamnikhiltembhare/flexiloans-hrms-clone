@@ -140,7 +140,7 @@ export default function HRDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Leave awaiting approval" className="lg:col-span-2" bodyClass="p-0"
-          actions={<Link to="/leave" className="text-[11px] text-cyan hover:underline">Open queue</Link>}>
+          actions={<Link to="/leave" className="text-[11px] text-cyan-ink font-medium hover:underline">Open queue</Link>}>
           <Table
             columns={[
               { key: 'employee', header: 'Employee' },

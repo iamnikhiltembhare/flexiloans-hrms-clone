@@ -4,22 +4,23 @@
 
 :root { color-scheme: light; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: #F5F7FA; color: #1A1D26; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
 
 @layer components {
   .card { @apply bg-white border border-line rounded-card shadow-card; }
+  .card-head { @apply border-b-2 border-line; }
   .btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors; }
-  .btn-primary { @apply btn bg-cyan text-white hover:bg-cyan-hover; }
-  .btn-secondary { @apply btn bg-white text-navy border border-line hover:bg-canvas; }
-  .btn-ghost { @apply btn bg-transparent text-muted border border-line hover:bg-canvas; }
+  .btn-primary { @apply btn bg-cyan-btn text-white shadow-sm hover:bg-cyan-btnHover hover:shadow-md; }
+  .btn-secondary { @apply btn bg-white text-navy border border-line2 font-semibold hover:bg-canvas hover:border-navy/40; }
+  .btn-ghost { @apply btn bg-transparent text-muted border border-line hover:bg-canvas hover:text-navy; }
   .btn-danger { @apply btn bg-[#DC2626] text-white hover:bg-[#B91C1C]; }
-  .input { @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] text-ink placeholder:text-faint outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20; }
-  .label { @apply block text-[11px] font-medium uppercase tracking-wide text-muted mb-1.5; }
-  .h1 { @apply text-xl font-semibold text-navy; }
-  .h2 { @apply text-[15px] font-semibold text-navy; }
+  .input { @apply w-full rounded-lg border border-line2 bg-white px-3 py-2 text-[13px] text-ink placeholder:text-faint outline-none transition-shadow focus:border-cyan focus:ring-2 focus:ring-cyan/30; }
+  .label { @apply block text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5; }
+  .h1 { @apply text-[22px] font-bold tracking-[-0.01em] text-navy; }
+  .h2 { @apply text-[15px] font-bold text-navy; }
   .h3 { @apply text-[13px] font-semibold text-navy; }
-  .th { @apply bg-navy text-white text-[10px] uppercase tracking-[0.06em] font-semibold text-left px-3 py-2.5; }
-  .td { @apply px-3 py-2.5 text-[13px] text-[#374151] border-b border-line; }
+  .th { @apply bg-navy text-white text-[10px] uppercase tracking-[0.07em] font-bold text-left px-3 py-3; }
+  .td { @apply px-3 py-2.5 text-[13px] text-[#2B3445] border-b border-line; }
 }
 
 
@@ -137,8 +138,14 @@ body { margin: 0; background: #F5F7FA; color: #1A1D26; font-family: Inter, -appl
 .nav-item { transition: background-color .2s ease, color .2s ease, padding-left .2s ease; }
 .nav-item:hover { padding-left: 1.15rem; }
 
+:focus-visible {
+  outline: 2px solid #00B4D8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 ::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: #9fb0c6; border-radius: 99px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* Honour the viewer's motion preference: kill every animation and transform. */

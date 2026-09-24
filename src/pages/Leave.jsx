@@ -69,8 +69,8 @@ export default function Leave() {
     ...baseCols.slice(1, 6),
     { key: 'action', header: 'Action', align: 'right', render: (r) => r.status === 'Pending' ? (
       <span className="flex gap-1.5 justify-end">
-        <button className="btn bg-[rgba(22,163,74,0.1)] text-[#16A34A] hover:bg-[rgba(22,163,74,0.18)] px-2 py-1" onClick={() => act(r, 'Approved')}><Check size={12} /> Approve</button>
-        <button className="btn bg-[rgba(220,38,38,0.1)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.18)] px-2 py-1" onClick={() => act(r, 'Rejected')}><X size={12} /> Reject</button>
+        <button className="btn bg-[#DCFCE7] text-[#15803D] ring-1 ring-[#15803D]/25 hover:bg-[#BBF7D0] px-2 py-1" onClick={() => act(r, 'Approved')}><Check size={12} /> Approve</button>
+        <button className="btn bg-[#FEE2E2] text-[#B91C1C] ring-1 ring-[#B91C1C]/25 hover:bg-[#FECACA] px-2 py-1" onClick={() => act(r, 'Rejected')}><X size={12} /> Reject</button>
       </span>
     ) : <Badge tone={statusTone(r.status)}>{r.status}</Badge> },
   ]
@@ -103,7 +103,7 @@ export default function Leave() {
                   {String(l.balance).padStart(2, '0')}
                 </p>
                 <p className="text-[11px] text-muted mt-0.5">Balance</p>
-                <button className="mt-2 text-[12px] text-cyan hover:underline"
+                <button className="mt-2 text-[12px] text-cyan-ink font-medium hover:underline"
                   onClick={() => toast(l.type, l.used + ' of ' + l.granted + ' consumed - ' + l.balance + ' available', 'info')}>
                   View Details
                 </button>
@@ -112,7 +112,7 @@ export default function Leave() {
               <div className="px-4 pb-3">
                 <p className="text-[10px] text-faint mb-1.5">{l.used} of {l.granted} Consumed</p>
                 <div className="h-1 w-full rounded-full bg-line overflow-hidden">
-                  <div className="h-full rounded-full bar-fill" style={{ width: pct + '%', background: l.color }} />
+                  <div className="h-full rounded-full bar-fill" style={{ width: pct + '%', background: l.bar }} />
                 </div>
               </div>
             </Card>
@@ -132,7 +132,7 @@ export default function Leave() {
 
       {tab === 'Upcoming holidays' && (
         <Card bodyClass="p-0"
-          actions={<Link to="/holidays" className="text-[11px] text-cyan hover:underline inline-flex items-center gap-1">
+          actions={<Link to="/holidays" className="text-[11px] text-cyan-ink font-medium hover:underline inline-flex items-center gap-1">
             Full 2026 calendar <ArrowUpRight size={11} />
           </Link>}>
           <Table

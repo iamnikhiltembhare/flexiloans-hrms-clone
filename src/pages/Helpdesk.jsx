@@ -72,7 +72,7 @@ export default function Helpdesk() {
                   <button className="btn-secondary px-2 py-1" onClick={() => { setTicketStatus(r.id, 'In Progress'); toast('Ticket picked up', r.id + ' moved to In Progress') }}>Start</button>
                 )}
                 {r.status !== 'Resolved' && (
-                  <button className="btn bg-[rgba(22,163,74,0.1)] text-[#16A34A] hover:bg-[rgba(22,163,74,0.18)] px-2 py-1"
+                  <button className="btn bg-[#DCFCE7] text-[#15803D] ring-1 ring-[#15803D]/25 hover:bg-[#BBF7D0] px-2 py-1"
                     onClick={() => { setTicketStatus(r.id, 'Resolved'); toast('Ticket resolved', r.id + ' has been closed') }}>Resolve</button>
                 )}
                 {r.status === 'Resolved' && (

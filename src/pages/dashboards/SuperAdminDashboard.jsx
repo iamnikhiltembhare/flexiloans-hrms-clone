@@ -143,7 +143,7 @@ export default function SuperAdminDashboard() {
             ['Employee records', employees.length, 'green'],
           ].map(([label, value, tone]) => (
             <div key={label} className="flex items-center justify-between gap-3 py-2.5 border-b border-line last:border-0">
-              <span className="text-[12px] text-[#374151]">{label}</span>
+              <span className="text-[12px] text-[#2B3445]">{label}</span>
               <Badge tone={tone}>{value}</Badge>
             </div>
           ))}
@@ -151,7 +151,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       <Card title="Recent audit events" subtitle="Most recent first" bodyClass="p-0"
-        actions={<Link to="/system" className="text-[11px] text-cyan hover:underline">Full audit log</Link>}>
+        actions={<Link to="/system" className="text-[11px] text-cyan-ink font-medium hover:underline">Full audit log</Link>}>
         <Table
           columns={[
             { key: 'id', header: 'Event', mono: true },
