@@ -3,19 +3,15 @@ import { Plus, Briefcase, Users, FileCheck, Timer, Star, Download } from 'lucide
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, Avatar, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { departments, locations } from '../data/mock.js'
 import { downloadCSV } from '../lib/download.js'
-import { usePersistentState } from '../lib/persist.js'
 
 const STAGES = ['Sourcing', 'Screening', 'Interviewing', 'Offer', 'Hired']
 const BLANK = { role: '', dept: 'Engineering', location: 'Mumbai HQ', type: 'Permanent', priority: 'Medium', count: '1' }
 
 export default function Recruitment() {
-  const { openings, candidates, advanceCandidate, toast, notify } = useApp()
-  const { user } = useAuth()
+  const { requisitions: reqs, addRequisition, candidates, advanceCandidate, toast, notify } = useApp()
   const [tab, setTab] = useState('Open requisitions')
-  const [reqs, setReqs] = usePersistentState('requisitions', openings)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
   const [err, setErr] = useState('')
@@ -23,13 +19,10 @@ export default function Recruitment() {
   const raise = (e) => {
     e.preventDefault()
     if (!form.role.trim()) { setErr('Give the role a title.'); return }
-    const id = 'REQ-' + (312 + reqs.length - openings.length)
-    setReqs((l) => [{
-      id, role: form.role.trim() + (Number(form.count) > 1 ? ' (x' + form.count + ')' : ''),
-      dept: form.dept, location: form.location, type: form.type, applicants: 0,
-      stage: 'Sourcing', owner: user.name, posted: new Date().toISOString().slice(0, 10),
-      priority: form.priority,
-    }, ...l])
+    const id = addRequisition({
+      role: form.role.trim() + (Number(form.count) > 1 ? ' (x' + form.count + ')' : ''),
+      dept: form.dept, location: form.location, type: form.type, priority: form.priority,
+    })
     notify({ title: 'Requisition ' + id + ' raised', detail: form.role.trim() + ' - ' + form.location, to: '/recruitment', kind: 'task' })
     toast('Requisition raised', id + ' is now open for sourcing')
     setForm(BLANK); setErr(''); setOpen(false)

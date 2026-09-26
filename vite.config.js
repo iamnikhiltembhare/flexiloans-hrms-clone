@@ -9,7 +9,8 @@ export default defineConfig({
       output: {
         entryFileNames: 'assets/app.js',
         chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/app.[ext]',
+        // The stylesheet keeps a stable name; fonts and images get hashed ones.
+        assetFileNames: (a) => ((a.names?.[0] || a.name || '').endsWith('.css') ? 'assets/app.css' : 'assets/[name]-[hash][extname]'),
       },
     },
   },

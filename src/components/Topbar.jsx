@@ -7,6 +7,19 @@ import {
 import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { Avatar } from './ui.jsx'
+import { haptic, useBackHandler } from '../lib/native.js'
+
+// Server notifications carry an ISO timestamp; seed data has a fixed label.
+function when(n) {
+  if (!n.at) return n.time
+  const mins = Math.round((Date.now() - Date.parse(n.at)) / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return mins + ' min ago'
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return hours + (hours === 1 ? ' hour ago' : ' hours ago')
+  const days = Math.round(hours / 24)
+  return days === 1 ? 'Yesterday' : days + ' days ago'
+}
 
 const NOTE_ICON = { leave: CalendarDays, alert: AlertTriangle, task: Briefcase, info: Info }
 const NOTE_TONE = { leave: '#7C3AED', alert: '#DC2626', task: '#2563EB', info: '#00B4D8' }
@@ -28,6 +41,8 @@ export default function Topbar({ onMenu }) {
 
   const [menu, setMenu] = useState(false)
   const [bell, setBell] = useState(false)
+  useBackHandler(menu, () => setMenu(false))
+  useBackHandler(bell, () => setBell(false))
   const [q, setQ] = useState('')
   const [focused, setFocused] = useState(false)
   const inputRef = useRef(null)
@@ -65,12 +80,13 @@ export default function Topbar({ onMenu }) {
 
   const onPunch = () => {
     const { action, now } = punchToggle()
+    haptic('success')
     toast(action === 'in' ? 'Punched in' : 'Punched out',
       (action === 'in' ? 'Shift started at ' : 'Shift ended at ') + now)
   }
 
   return (
-    <header className="h-14 shrink-0 bg-white border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
+    <header className="topbar h-14 shrink-0 bg-white border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
       <button className="lg:hidden text-navy" onClick={onMenu} aria-label="Open menu"><Menu size={20} /></button>
 
       <div ref={searchRef} className="hidden md:block relative w-72">
@@ -166,7 +182,7 @@ export default function Topbar({ onMenu }) {
                         <span className="min-w-0 flex-1">
                           <span className="block text-[12px] font-medium text-navy">{n.title}</span>
                           <span className="block text-[11px] text-muted">{n.detail}</span>
-                          <span className="block text-[10px] text-faint mt-0.5">{n.time}</span>
+                          <span className="block text-[10px] text-faint mt-0.5">{when(n)}</span>
                         </span>
                         {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-cyan shrink-0" />}
                       </button>

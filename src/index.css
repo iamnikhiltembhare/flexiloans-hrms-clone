@@ -148,6 +148,57 @@ body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -appl
 ::-webkit-scrollbar-thumb { background: #9fb0c6; border-radius: 99px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* ---------------------------------------------------------------------------
+   Phones and the Android app
+   Capacitor injects --safe-area-inset-* (see capacitor.config.json); browsers
+   fall back to env(). Both are 0 on a desktop, so this is a no-op there.
+--------------------------------------------------------------------------- */
+
+:root {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
+.app-shell { height: 100vh; height: 100dvh; }
+.topbar, .sidebar-head { height: calc(3.5rem + var(--safe-top)); padding-top: var(--safe-top); }
+.sidebar-foot { padding-bottom: calc(.75rem + var(--safe-bottom)); }
+.bottom-nav { padding-bottom: var(--safe-bottom); box-shadow: 0 -4px 16px -8px rgba(16,30,54,.12); }
+.toast-stack { bottom: calc(1.25rem + var(--safe-bottom)); }
+
+.modal-panel { animation: fl-pop .3s cubic-bezier(.22,.8,.3,1) both; }
+
+@keyframes fl-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: none; }
+}
+
+@media (max-width: 1023px) {
+  /* Toasts float above the bottom navigation, centred. */
+  .toast-stack { left: 1rem; right: 1rem; width: auto; max-width: 24rem; margin: 0 auto; bottom: calc(5rem + var(--safe-bottom)); }
+  /* Comfortable touch targets. */
+  .btn { padding: .55rem .95rem; font-size: 13px; border-radius: .7rem; }
+  .input { padding-top: .6rem; padding-bottom: .6rem; font-size: 14px; }
+}
+
+@media (max-width: 639px) {
+  /* Dialogs become bottom sheets. */
+  .modal-panel {
+    display: flex; flex-direction: column; max-height: 92dvh;
+    border-radius: 1.25rem 1.25rem 0 0; border-bottom: 0;
+    animation: fl-sheet-up .34s cubic-bezier(.22,.8,.3,1) both;
+  }
+  .modal-body { overflow-y: auto; }
+  .modal-foot { padding-bottom: calc(.75rem + var(--safe-bottom)); }
+  .modal-foot > .btn, .modal-foot > button { flex: 1; justify-content: center; }
+  .h1 { font-size: 20px; }
+}
+
+/* Inside the app: no tap flash, no rubber-band page, no accidental text selection. */
+html.native { -webkit-tap-highlight-color: transparent; }
+html.native body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+html.native input, html.native textarea, html.native select { -webkit-user-select: text; user-select: text; }
+html.native .nav-item:hover { padding-left: 1rem; }
+
 /* Honour the viewer's motion preference: kill every animation and transform. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

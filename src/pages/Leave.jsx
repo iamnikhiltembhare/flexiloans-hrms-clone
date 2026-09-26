@@ -8,12 +8,14 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { downloadCSV } from '../lib/download.js'
+import { PERMS } from '../data/accounts.js'
 
-const BLANK = { type: 'Casual Leave', from: '', to: '', reason: '' }
+// Start on the first real leave type so the form and the saved request agree.
+const BLANK = { type: leaveBalances[0].type, from: '', to: '', reason: '' }
 
 export default function Leave() {
   const { leaveRequests, addLeaveRequest, setLeaveStatus, toast, notify } = useApp()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const [tab, setTab] = useState('My requests')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -41,12 +43,13 @@ export default function Leave() {
   }
 
   const exportLeave = () => {
+    const exportable = approver ? leaveRequests : mine
     downloadCSV('flexiloans-leave-requests.csv', [
       { header: 'Request', key: 'id' }, { header: 'Employee', key: 'employee' }, { header: 'Type', key: 'type' },
       { header: 'From', key: 'from' }, { header: 'To', key: 'to' }, { header: 'Days', key: 'days' },
       { header: 'Reason', key: 'reason' }, { header: 'Status', key: 'status' },
-    ], leaveRequests)
-    toast('Export ready', leaveRequests.length + ' leave records exported to CSV')
+    ], exportable)
+    toast('Export ready', exportable.length + ' leave records exported to CSV')
   }
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -75,7 +78,11 @@ export default function Leave() {
     ) : <Badge tone={statusTone(r.status)}>{r.status}</Badge> },
   ]
 
+  // Approvals are an HR task; everyone else only sees their own requests.
+  const approver = can(PERMS.HR_PEOPLE)
+  const mine = leaveRequests.filter((r) => r.empId === user.id)
   const pending = leaveRequests.filter((r) => r.empId !== user.id)
+  const tabs = approver ? ['My requests', 'Pending my approval', 'Upcoming holidays'] : ['My requests', 'Upcoming holidays']
 
   return (
     <>
@@ -120,11 +127,11 @@ export default function Leave() {
         })}
       </div>
 
-      <Tabs tabs={['My requests', 'Pending my approval', 'Upcoming holidays']} active={tab} onChange={setTab} />
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
-      {tab === 'My requests' && <Card bodyClass="p-0"><Table columns={baseCols} rows={leaveRequests} /></Card>}
+      {tab === 'My requests' && <Card bodyClass="p-0"><Table columns={baseCols} rows={mine} empty="You have not applied for leave yet." /></Card>}
 
-      {tab === 'Pending my approval' && (
+      {approver && tab === 'Pending my approval' && (
         <Card bodyClass="p-0">
           <Table columns={approvalCols} rows={pending} empty="Nothing awaiting your approval." />
         </Card>

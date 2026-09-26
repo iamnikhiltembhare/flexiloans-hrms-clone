@@ -6,7 +6,7 @@ export const STORE_PREFIX = 'fl_hrms_v1:'
 
 const key = (name) => STORE_PREFIX + name
 
-function read(name, fallback) {
+export function readStored(name, fallback) {
   try {
     const raw = localStorage.getItem(key(name))
     if (raw === null) return fallback
@@ -18,7 +18,7 @@ function read(name, fallback) {
   }
 }
 
-function write(name, value) {
+export function writeStored(name, value) {
   try {
     localStorage.setItem(key(name), JSON.stringify(value))
     return true
@@ -33,13 +33,13 @@ function write(name, value) {
  * key. Reads once on mount and writes on every change.
  */
 export function usePersistentState(name, initial) {
-  const [value, setValue] = useState(() => read(name, typeof initial === 'function' ? initial() : initial))
+  const [value, setValue] = useState(() => readStored(name, typeof initial === 'function' ? initial() : initial))
   const first = useRef(true)
 
   useEffect(() => {
     // Skip the write triggered by the initial render.
     if (first.current) { first.current = false; return }
-    write(name, value)
+    writeStored(name, value)
   }, [name, value])
 
   return [value, setValue]

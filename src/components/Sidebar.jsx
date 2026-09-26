@@ -8,6 +8,7 @@ import Logo from './Logo.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { PERMS } from '../data/accounts.js'
 import { BRAND } from '../lib/brand.js'
+import { useBackHandler } from '../lib/native.js'
 
 // Every nav item declares the permission it needs. A group disappears when
 // none of its items are permitted for the signed-in role.
@@ -42,6 +43,7 @@ const GROUPS = [
 
 export default function Sidebar({ open, onClose }) {
   const { can, user } = useAuth()
+  useBackHandler(open, onClose)
 
   const groups = GROUPS
     .map((g) => ({ ...g, items: g.items.filter((i) => can(i.perm)) }))
@@ -49,12 +51,12 @@ export default function Sidebar({ open, onClose }) {
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={onClose} />}
+      {open && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" style={{ animation: 'fl-fade .2s ease-out both' }} onClick={onClose} />}
       <aside className={
-        'fixed lg:static z-40 inset-y-0 left-0 w-60 shrink-0 text-white flex flex-col transition-transform duration-300 ease-out bg-[linear-gradient(175deg,#1B365D_0%,#16294a_60%,#0f1e36_100%)] ' +
+        'sidebar fixed lg:static z-50 inset-y-0 left-0 w-[17rem] lg:w-60 shrink-0 shadow-2xl lg:shadow-none text-white flex flex-col transition-transform duration-300 ease-out bg-[linear-gradient(175deg,#1B365D_0%,#16294a_60%,#0f1e36_100%)] ' +
         (open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0')
       }>
-        <div className="h-14 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
+        <div className="sidebar-head h-14 flex items-center justify-between px-4 border-b border-white/10 shrink-0">
           <Logo variant="light" />
           <button className="lg:hidden text-white/60 hover:text-white" onClick={onClose} aria-label="Close menu"><X size={18} /></button>
         </div>
@@ -66,7 +68,7 @@ export default function Sidebar({ open, onClose }) {
               {g.items.map(({ to, label, icon: Icon, end }) => (
                 <NavLink key={to} to={to} end={end} onClick={onClose}
                   className={({ isActive }) =>
-                    'nav-item group relative flex items-center gap-2.5 px-4 py-2 text-[13px] ' +
+                    'nav-item group relative flex items-center gap-2.5 px-4 py-2.5 lg:py-2 text-[14px] lg:text-[13px] ' +
                     (isActive
                       ? 'bg-[rgba(0,180,216,0.22)] text-white font-semibold'
                       : 'text-white/[0.78] hover:bg-white/[0.12] hover:text-white')
@@ -85,7 +87,7 @@ export default function Sidebar({ open, onClose }) {
           ))}
         </nav>
 
-        <div className="px-4 py-3 border-t border-white/10 shrink-0">
+        <div className="sidebar-foot px-4 py-3 border-t border-white/10 shrink-0">
           <p className="text-[10px] text-white/50">Signed in as</p>
           <p className="text-[11px] text-white font-medium truncate">{user?.role}</p>
           <p className="text-[10px] text-white/55 mt-1.5">{BRAND.company} HRMS - v1.0 demo</p>

@@ -4,8 +4,9 @@ import { User, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
-import { ACCOUNTS, ROLES } from '../data/accounts.js'
+import { ACCOUNTS, ROLES, DEMO_PASSWORDS } from '../data/accounts.js'
 import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
+import { API_MODE } from '../lib/api.js'
 
 export default function Login() {
   const { login } = useAuth()
@@ -14,12 +15,17 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const scene = useParallaxScene()
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
+    if (busy) return
     if (!username.trim() || !password.trim()) { setError('Please enter both your username and password.'); return }
-    if (!login(username.trim(), password)) { setError('That username and password do not match an account.'); return }
+    setBusy(true)
+    const problem = await login(username.trim(), password)
+    setBusy(false)
+    if (problem) { setError(problem); return }
     navigate('/', { replace: true })
   }
 
@@ -79,10 +85,10 @@ export default function Login() {
 
           {error && <p className="text-[12px] text-[#DC2626] px-2">{error}</p>}
 
-          <button type="submit"
-            className="sheen w-full rounded-full py-3 text-[15px] font-medium text-white tracking-wide transition-all duration-300 hover:shadow-[0_10px_28px_-8px_rgba(0,180,216,.6)] hover:-translate-y-0.5 active:translate-y-0"
+          <button type="submit" disabled={busy}
+            className="sheen w-full disabled:opacity-70 rounded-full py-3 text-[15px] font-medium text-white tracking-wide transition-all duration-300 hover:shadow-[0_10px_28px_-8px_rgba(0,180,216,.6)] hover:-translate-y-0.5 active:translate-y-0"
             style={{ background: 'linear-gradient(90deg,#7FD4EE 0%,#3FBEE4 50%,#7FD4EE 100%)' }}>
-            <span className="relative z-10">LOGIN</span>
+            <span className="relative z-10">{busy ? 'SIGNING IN...' : 'LOGIN'}</span>
           </button>
         </form>
 
@@ -93,10 +99,11 @@ export default function Login() {
 
         <p className="mt-8 text-center text-[12px] text-muted">{BRAND.poweredBy}</p>
 
+        {!API_MODE && (
         <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">Demo build - test logins</p>
           {ACCOUNTS.map((a) => (
-            <button key={a.username} type="button" onClick={() => fill(a.username, a.password)}
+            <button key={a.username} type="button" onClick={() => fill(a.username, DEMO_PASSWORDS[a.username])}
               className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-white hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-[12px] font-medium text-navy">{ROLES[a.role].label}</span>
@@ -107,6 +114,7 @@ export default function Login() {
           ))}
           <p className="text-[10px] text-faint mt-2 px-2.5">Click a row to fill the form.</p>
         </div>
+        )}
       </div>
     </div>
   )

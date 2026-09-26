@@ -29,3 +29,14 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# Public API URL for the Android build - safe to commit.
+!.env.android
+
+# local API database
+server/data/
+
+# Android signing keys - never commit
+*.jks
+*.keystore
+!android/app/debug.keystore
+keystore.properties

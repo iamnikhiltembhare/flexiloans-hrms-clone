@@ -4,6 +4,7 @@ import { PageHeader, Card, Badge, Tabs, Avatar } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { PERMS } from '../data/accounts.js'
 
 const TAGS = ['Policy', 'Performance', 'Benefits', 'Event', 'Compliance']
 const TAG_TONE = { Policy: 'cyan', Performance: 'purple', Benefits: 'green', Event: 'blue', Compliance: 'amber' }
@@ -11,7 +12,7 @@ const BLANK = { title: '', body: '', tag: 'Policy' }
 
 export default function Announcements() {
   const { announcements, addAnnouncement, toast, notify } = useApp()
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const [tab, setTab] = useState('All')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -36,7 +37,7 @@ export default function Announcements() {
       <PageHeader
         title="Announcements"
         subtitle="Company-wide updates from HR, Compliance and Leadership"
-        actions={<button className="btn-primary" onClick={() => setOpen(true)}><Plus size={13} /> New announcement</button>}
+        actions={can(PERMS.HR_PEOPLE) && <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={13} /> New announcement</button>}
       />
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />

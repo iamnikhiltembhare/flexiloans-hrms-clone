@@ -1,0 +1,9 @@
+# Netlify config for the API site (flexiloans-hrms-api). Deploy from this
+# folder - see DEPLOY.md. The web app's own config is ../netlify.toml.
+
+[build]
+  publish = "public"
+
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"

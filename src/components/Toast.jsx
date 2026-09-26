@@ -1,11 +1,11 @@
-import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react'
+import { CheckCircle2, Info, AlertTriangle, XCircle, X } from 'lucide-react'
 
-const ICONS = { success: CheckCircle2, info: Info, warning: AlertTriangle }
-const BORDER = { success: '#16A34A', info: '#00B4D8', warning: '#D97706' }
+const ICONS = { success: CheckCircle2, info: Info, warning: AlertTriangle, error: XCircle }
+const BORDER = { success: '#16A34A', info: '#00B4D8', warning: '#D97706', error: '#DC2626' }
 
 export default function ToastStack({ toasts, dismiss }) {
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 w-[min(92vw,20rem)]">
+    <div className="toast-stack fixed right-5 z-[60] flex flex-col gap-2 w-[min(92vw,20rem)]">
       {toasts.map((t) => {
         const Icon = ICONS[t.kind] || Info
         return (

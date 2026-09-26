@@ -33,7 +33,7 @@ const LABELS = {
 }
 
 export default function Settings() {
-  const { toast } = useApp()
+  const { toast, online, resetData } = useApp()
   const { user } = useAuth()
   const [tab, setTab] = useState('Preferences')
   const [prefs, setPrefs] = usePersistentState('prefs', { email: true, push: false, digest: true, approvals: true, twoFactor: true })
@@ -45,7 +45,18 @@ export default function Settings() {
   const [confirmReset, setConfirmReset] = useState(false)
   const canStore = storageAvailable()
 
-  const doReset = () => {
+  const doReset = async () => {
+    if (online) {
+      // Server mode: restores the starting data for every user.
+      try {
+        await resetData()
+        toast('Data reset', 'Every record is back to the starting data', 'warning')
+      } catch (err) {
+        toast('Reset failed', err.message, 'error')
+      }
+      setConfirmReset(false)
+      return
+    }
     const n = clearStoredState()
     toast('Demo data reset', n + ' saved items cleared - reloading', 'warning')
     setTimeout(() => window.location.reload(), 900)

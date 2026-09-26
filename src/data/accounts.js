@@ -1,9 +1,10 @@
 import { BRAND } from '../lib/brand.js'
 
 // Role and account registry for the FlexiLoans HRMS demo.
-// Credentials live in the client bundle on purpose: this is a front-end
-// prototype with fabricated data and no backend. Replace `authenticate()`
-// with a real API call when a server exists.
+// ACCOUNTS is safe to ship anywhere: usernames, roles and profiles only.
+// DEMO_PASSWORDS is kept separate so that a server build (VITE_API_BASE_URL
+// set) never references it and the bundler drops it. The API server hashes
+// these on first start; the offline demo checks them in the browser.
 
 // Permission keys drive both the sidebar and the route guards.
 export const PERMS = {
@@ -43,7 +44,6 @@ export const ROLES = {
 export const ACCOUNTS = [
   {
     username: 'admin',
-    password: 'Admin@2026',
     role: 'super_admin',
     profile: {
       id: 'FL0001', name: 'System Administrator', shortName: 'Admin', email: 'admin@' + BRAND.emailDomain,
@@ -56,7 +56,6 @@ export const ACCOUNTS = [
   },
   {
     username: 'hr.manager',
-    password: 'FlexiHR@2026',
     role: 'hr',
     profile: {
       id: 'FL1008', name: 'Aarti Deshmukh', email: 'aarti.deshmukh@' + BRAND.emailDomain,
@@ -68,7 +67,6 @@ export const ACCOUNTS = [
   },
   {
     username: 'rohan.sharma',
-    password: 'FlexiEmp@2026',
     role: 'employee',
     profile: {
       id: 'FL1009', name: 'Rohan Sharma', email: 'rohan.sharma@' + BRAND.emailDomain,
@@ -80,10 +78,16 @@ export const ACCOUNTS = [
   },
 ]
 
+export const DEMO_PASSWORDS = {
+  'admin': 'Admin@2026',
+  'hr.manager': 'FlexiHR@2026',
+  'rohan.sharma': 'FlexiEmp@2026',
+}
+
 export function authenticate(username, password) {
   const u = String(username).trim().toLowerCase()
   const found = ACCOUNTS.find((a) => a.username === u)
-  if (!found || found.password !== password) return null
+  if (!found || DEMO_PASSWORDS[found.username] !== password) return null
   const role = ROLES[found.role]
   return {
     ...found.profile,

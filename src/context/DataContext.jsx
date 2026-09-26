@@ -1,132 +1,168 @@
-import { createContext, useCallback, useContext, useMemo, useState as useMemoLessState } from 'react'
-import { usePersistentState } from '../lib/persist.js'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { readStored, writeStored, clearStoredState } from '../lib/persist.js'
+import { ACTIONS, COLLECTIONS, applyAction, nextSerial, today, clockTime, newNotificationId } from '../lib/actions.js'
+import { API_MODE, api } from '../lib/api.js'
+import { SEED } from '../data/seed.js'
+import { useAuth } from './AuthContext.jsx'
 import ToastStack from '../components/Toast.jsx'
-import {
-  employees as seedEmployees, leaveRequests as seedLeave, tickets as seedTickets,
-  announcements as seedAnnouncements, documents as seedDocuments, candidates as seedCandidates,
-  openings as seedOpenings,
-} from '../data/mock.js'
+
+// Two modes, one interface:
+// - Offline demo (no VITE_API_BASE_URL): data lives in this browser only.
+// - Server: data comes from the API. Each action updates the screen at once,
+//   then the server's answer replaces it, so the server always has the final say.
 
 const DataContext = createContext(null)
+const NAMES = Object.keys(COLLECTIONS)
+const POLL_MS = 30000
 
-const SEED_NOTIFICATIONS = [
-  { id: 'n1', title: 'Leave request awaiting approval', detail: 'Sneha Iyer applied for 1 day of Sick Leave', time: '12 min ago', to: '/leave', kind: 'leave', read: false },
-  { id: 'n2', title: 'Reimbursement SLA breached', detail: 'HD-8822 has crossed its resolution window', time: '1 hour ago', to: '/helpdesk', kind: 'alert', read: false },
-  { id: 'n3', title: 'Offer awaiting your sign-off', detail: 'Nilesh Bose - Area Sales Manager, Delhi NCR', time: '3 hours ago', to: '/recruitment', kind: 'task', read: false },
-  { id: 'n4', title: 'September payroll is processing', detail: 'Payslips will be available on 30 September', time: 'Yesterday', to: '/payroll', kind: 'info', read: false },
-  { id: 'n5', title: 'Self-assessment window opens 1 October', detail: 'Mid-year cycle FY 2026-27', time: '2 days ago', to: '/performance', kind: 'info', read: true },
-  { id: 'n6', title: 'Address proof pending verification', detail: 'HR Ops will review it within 2 working days', time: '3 days ago', to: '/documents', kind: 'info', read: true },
-]
+const EMPTY = { ...Object.fromEntries(NAMES.map((n) => [n, []])), punch: { inAt: null, outAt: null } }
+const loadLocal = () => Object.fromEntries(NAMES.map((n) => [n, readStored(n, SEED[n])]))
 
 let seq = 100
-const nextId = (prefix) => prefix + ++seq
+const nextToastId = () => 't' + ++seq
 
 export function DataProvider({ children }) {
-  const [employees, setEmployees] = usePersistentState('employees', seedEmployees)
-  const [leaveRequests, setLeaveRequests] = usePersistentState('leaveRequests', seedLeave)
-  const [tickets, setTickets] = usePersistentState('tickets', seedTickets)
-  const [announcements, setAnnouncements] = usePersistentState('announcements', seedAnnouncements)
-  const [documents, setDocuments] = usePersistentState('documents', seedDocuments)
-  const [candidates, setCandidates] = usePersistentState('candidates', seedCandidates)
-  const [openings] = usePersistentState('openings', seedOpenings)
-  const [notifications, setNotifications] = usePersistentState('notifications', SEED_NOTIFICATIONS)
-  const [toasts, setToasts] = useMemoLessState([])
-  const [punch, setPunch] = usePersistentState('punch', { inAt: '09:34 AM', outAt: null })
+  const { user } = useAuth()
+  const [state, setState] = useState(() => (API_MODE ? EMPTY : loadLocal()))
+  const [ready, setReady] = useState(!API_MODE)
+  const [loadError, setLoadError] = useState('')
+  const [toasts, setToasts] = useState([])
+
+  // The ref is the synchronous source of truth, so a dispatch can return a
+  // result (a new id, the next stage) straight after an earlier dispatch.
+  const stateRef = useRef(state)
+  const commit = useCallback((next) => { stateRef.current = next; setState(next) }, [])
 
   const dismiss = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), [])
-
   const toast = useCallback((title, detail, kind = 'success') => {
-    const id = nextId('t')
+    const id = nextToastId()
     setToasts((t) => [...t, { id, title, detail, kind }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200)
   }, [])
 
-  const notify = useCallback((n) => {
-    setNotifications((list) => [{ id: nextId('n'), time: 'Just now', read: false, kind: 'info', ...n }, ...list])
-  }, [])
+  // --- offline demo: persist each collection that changed ----------------
+  const saved = useRef(state)
+  useEffect(() => {
+    if (API_MODE) return
+    for (const n of NAMES) if (state[n] !== saved.current[n]) writeStored(n, state[n])
+    saved.current = state
+  }, [state])
 
-  const markRead = useCallback((id) => {
-    setNotifications((l) => l.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }, [])
-  const markAllRead = useCallback(() => setNotifications((l) => l.map((n) => ({ ...n, read: true }))), [])
-  const clearNotifications = useCallback(() => setNotifications([]), [])
+  // --- server sync ---------------------------------------------------------
+  const pending = useRef(0)   // actions in flight; polls must not undo them
+  const latest = useRef(0)    // only the newest action response is applied
 
-  const addEmployee = useCallback((emp) => {
-    setEmployees((list) => [{
-      id: 'FL' + (1001 + list.length),
-      status: 'Probation', experience: '0 yrs', employmentType: 'Permanent',
-      manager: 'Aarti Deshmukh', joinDate: new Date().toISOString().slice(0, 10),
-      ...emp,
-    }, ...list])
-  }, [])
+  const refresh = useCallback(async () => {
+    if (!API_MODE) return true
+    try {
+      const fresh = await api('/api/state')
+      if (pending.current === 0) commit(fresh)
+      setReady(true)
+      setLoadError('')
+      return true
+    } catch (err) {
+      setLoadError(err.message)
+      return false
+    }
+  }, [commit])
 
-  const addTicket = useCallback((t) => {
-    const id = 'HD-' + (8842 + Math.floor(Math.random() * 40))
-    setTickets((list) => [{
-      id, status: 'Open', sla: '8h left', assignee: 'HR Ops',
-      raisedBy: 'Current user', created: new Date().toISOString().slice(0, 10), ...t,
-    }, ...list])
-    return id
-  }, [])
+  useEffect(() => {
+    if (!API_MODE) return
+    if (!user) { commit(EMPTY); setReady(false); return }
+    refresh()
+    const tick = () => { if (document.visibilityState === 'visible') refresh() }
+    const timer = setInterval(tick, POLL_MS)
+    document.addEventListener('visibilitychange', tick)
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
+  }, [user, refresh, commit])
 
-  const setTicketStatus = useCallback((id, status) => {
-    setTickets((l) => l.map((t) => (t.id === id ? { ...t, status, sla: status === 'Resolved' ? 'Met' : t.sla } : t)))
-  }, [])
+  const dispatch = useCallback((type, payload) => {
+    const { collection } = ACTIONS[type]
+    const { value, result } = applyAction(stateRef.current[collection], { type, payload })
+    commit({ ...stateRef.current, [collection]: value })
 
-  const addAnnouncement = useCallback((a) => {
-    setAnnouncements((l) => [{ id: Date.now(), author: 'Current user', date: new Date().toISOString().slice(0, 10), pinned: false, ...a }, ...l])
-  }, [])
+    if (API_MODE) {
+      const mine = ++latest.current
+      pending.current++
+      api('/api/actions', { method: 'POST', body: { type, payload } })
+        .then(({ state: server }) => { if (mine === latest.current) commit(server) })
+        .catch((err) => {
+          toast('Not saved', err.message, 'error')
+          pending.current = 0
+          refresh()
+        })
+        .finally(() => { pending.current = Math.max(0, pending.current - 1) })
+    }
+    return result
+  }, [commit, refresh, toast])
 
-  const addDocument = useCallback((d) => {
-    setDocuments((l) => [{ status: 'Pending', uploaded: new Date().toISOString().slice(0, 10), ...d }, ...l])
-  }, [])
+  // --- actions (same names and return values the pages always used) ------
+  const me = user?.name || 'Current user'
 
-  const addLeaveRequest = useCallback((r) => {
-    setLeaveRequests((l) => [{ id: 'LV-' + (2042 + l.length), status: 'Pending', appliedOn: new Date().toISOString().slice(0, 10), ...r }, ...l])
-  }, [])
+  const notify = useCallback((n) => dispatch('notification.add', {
+    notification: { id: newNotificationId(), time: 'Just now', at: new Date().toISOString(), read: false, kind: 'info', ...n },
+  }), [dispatch])
+  const markRead = useCallback((id) => dispatch('notification.read', { id }), [dispatch])
+  const markAllRead = useCallback(() => dispatch('notification.readAll'), [dispatch])
+  const clearNotifications = useCallback(() => dispatch('notification.clear'), [dispatch])
 
-  const setLeaveStatus = useCallback((id, status) => {
-    setLeaveRequests((l) => l.map((r) => (r.id === id ? { ...r, status } : r)))
-  }, [])
+  const addEmployee = useCallback((emp) => dispatch('employee.add', { employee: {
+    id: nextSerial(stateRef.current.employees, 'FL', 1000),
+    status: 'Probation', experience: '0 yrs', employmentType: 'Permanent', manager: me, joinDate: today(),
+    ...emp,
+  } }), [dispatch, me])
 
-  const STAGES = ['Shortlisted', 'Tech Screen', 'HR Round', 'Final Round', 'Offer Rolled', 'Hired']
-  const advanceCandidate = useCallback((name) => {
-    let moved = null
-    setCandidates((l) => l.map((c) => {
-      if (c.name !== name) return c
-      const i = STAGES.indexOf(c.stage)
-      const next = STAGES[Math.min(i + 1, STAGES.length - 1)]
-      moved = next
-      return { ...c, stage: next }
-    }))
-    return moved
-  }, [])
+  const addTicket = useCallback((t) => dispatch('ticket.add', { ticket: {
+    id: nextSerial(stateRef.current.tickets, 'HD-', 8841),
+    status: 'Open', sla: '8h left', assignee: 'HR Ops', raisedBy: me, raisedById: user?.id, created: today(),
+    ...t,
+  } }), [dispatch, me, user])
 
-  const punchToggle = useCallback(() => {
-    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-    let action
-    setPunch((p) => {
-      if (p.outAt || !p.inAt) { action = 'in'; return { inAt: now, outAt: null } }
-      action = 'out'
-      return { ...p, outAt: now }
-    })
-    return { action, now }
-  }, [])
+  const setTicketStatus = useCallback((id, status) => dispatch('ticket.setStatus', { id, status }), [dispatch])
+
+  const addAnnouncement = useCallback((a) => dispatch('announcement.add', { announcement: {
+    id: Date.now(), author: me, date: today(), pinned: false, ...a,
+  } }), [dispatch, me])
+
+  const addDocument = useCallback((d) => dispatch('document.add', { document: {
+    status: 'Pending', uploaded: today(), ...d,
+  } }), [dispatch])
+
+  const addLeaveRequest = useCallback((r) => dispatch('leave.add', { request: {
+    id: nextSerial(stateRef.current.leaveRequests, 'LV-', 2041), status: 'Pending', appliedOn: today(), ...r,
+  } }), [dispatch])
+
+  const setLeaveStatus = useCallback((id, status) => dispatch('leave.setStatus', { id, status }), [dispatch])
+
+  const advanceCandidate = useCallback((name) => dispatch('candidate.advance', { name }), [dispatch])
+
+  const addRequisition = useCallback((r) => dispatch('requisition.add', { requisition: {
+    id: nextSerial(stateRef.current.requisitions, 'REQ-', 311),
+    applicants: 0, stage: 'Sourcing', owner: me, posted: today(), ...r,
+  } }), [dispatch, me])
+
+  const punchToggle = useCallback(() => dispatch('punch.toggle', { now: clockTime() }), [dispatch])
+
+  // Restore the starting data: on the server for everyone, or in this browser.
+  const resetData = useCallback(async () => {
+    if (!API_MODE) return clearStoredState()
+    const { state: server } = await api('/api/admin/reset', { method: 'POST' })
+    commit(server)
+    return NAMES.length
+  }, [commit])
 
   const value = useMemo(() => ({
-    employees, addEmployee,
-    leaveRequests, addLeaveRequest, setLeaveStatus,
-    tickets, addTicket, setTicketStatus,
-    announcements, addAnnouncement,
-    documents, addDocument,
-    candidates, advanceCandidate, openings,
-    notifications, notify, markRead, markAllRead, clearNotifications,
-    unread: notifications.filter((n) => !n.read).length,
-    toast, punch, punchToggle,
-  }), [employees, leaveRequests, tickets, announcements, documents, candidates, openings,
-    notifications, punch, addEmployee, addLeaveRequest, setLeaveStatus, addTicket,
-    setTicketStatus, addAnnouncement, addDocument, advanceCandidate, notify, markRead,
-    markAllRead, clearNotifications, toast, punchToggle])
+    ...state,
+    openings: state.requisitions,
+    addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
+    addAnnouncement, addDocument, advanceCandidate, addRequisition,
+    notify, markRead, markAllRead, clearNotifications,
+    unread: state.notifications.filter((n) => !n.read).length,
+    toast, punchToggle, resetData,
+    ready, loadError, refresh, online: API_MODE,
+  }), [state, addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
+    addAnnouncement, addDocument, advanceCandidate, addRequisition, notify, markRead,
+    markAllRead, clearNotifications, toast, punchToggle, resetData, ready, loadError, refresh])
 
   return (
     <DataContext.Provider value={value}>
