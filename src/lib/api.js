@@ -9,6 +9,10 @@ export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/
 // constant and drop the offline-only code (including the demo passwords).
 export const API_MODE = !!import.meta.env.VITE_API_BASE_URL
 
+// Test builds (VITE_APP_ENV=test) talk to the API's isolated /test
+// environment and show a TEST banner and the test-only logins.
+export const IS_TEST_BUILD = import.meta.env.VITE_APP_ENV === 'test'
+
 const TOKEN_KEY = 'fl_hrms_v1:token'
 
 export class ApiError extends Error {

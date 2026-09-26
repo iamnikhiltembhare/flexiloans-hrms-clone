@@ -156,3 +156,58 @@ test('CORS allows the Android app origin and nothing unexpected', async () => {
   const evil = await call('GET', '/api/health', { origin: 'https://evil.example' })
   assert.equal(evil.headers.get('access-control-allow-origin'), null)
 })
+
+// --- test environment isolation ------------------------------------------
+
+import { createEnvironments } from './environments.js'
+
+function setupEnvs() {
+  const handle = createEnvironments({ makeStore: () => sqliteStore(':memory:'), secret: SECRET })
+  const call = async (method, path, { token, body } = {}) => {
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers.Authorization = 'Bearer ' + token
+    const res = await handle(new Request(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined }))
+    return { status: res.status, data: await res.json().catch(() => null) }
+  }
+  const login = async (prefix, username, password) =>
+    call('POST', prefix + '/api/auth/login', { body: { username, password } })
+  return { call, login }
+}
+
+test('test accounts only work in the test environment, and vice versa', async () => {
+  const { login } = setupEnvs()
+  assert.equal((await login('/test', 'test.employee', 'TestEmp@2026')).status, 200)
+  assert.equal((await login('/test', 'test.hr', 'TestHR@2026')).status, 200)
+  assert.equal((await login('/test', 'test.admin', 'TestAdmin@2026')).status, 200)
+  assert.equal((await login('', 'test.employee', 'TestEmp@2026')).status, 401, 'no test users in production')
+  assert.equal((await login('/test', ...EMP)).status, 401, 'no demo users in test')
+})
+
+test('test and production data and tokens are isolated', async () => {
+  const { call, login } = setupEnvs()
+  const testToken = (await login('/test', 'test.employee', 'TestEmp@2026')).data.token
+  const prodToken = (await login('', ...EMP)).data.token
+
+  await call('POST', '/test/api/actions', { token: testToken, body: { type: 'ticket.add', payload: { ticket: { subject: 'Only in test' } } } })
+  const hrProd = (await call('GET', '/api/state', { token: (await login('', ...HR)).data.token })).data
+  assert.ok(!hrProd.tickets.some((t) => t.subject === 'Only in test'))
+  const hrTest = (await call('GET', '/test/api/state', { token: (await login('/test', 'test.hr', 'TestHR@2026')).data.token })).data
+  assert.ok(hrTest.tickets.some((t) => t.subject === 'Only in test'))
+
+  assert.equal((await call('GET', '/api/state', { token: testToken })).status, 401, 'test token rejected in production')
+  assert.equal((await call('GET', '/test/api/state', { token: prodToken })).status, 401, 'production token rejected in test')
+})
+
+test('accounts added to the code later are created without touching existing users', async () => {
+  const store = sqliteStore(':memory:')
+  const one = createApp({ store, secret: SECRET, accounts: [{ username: 'a', role: 'employee', profile: { id: 'X1', name: 'A' }, password: 'pw-a' }] })
+  const r1 = await one(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'a', password: 'pw-a' }) }))
+  assert.equal(r1.status, 200)
+  const two = createApp({ store, secret: SECRET, accounts: [
+    { username: 'a', role: 'employee', profile: { id: 'X1', name: 'A' }, password: 'changed-in-code' },
+    { username: 'b', role: 'hr', profile: { id: 'X2', name: 'B' }, password: 'pw-b' },
+  ] })
+  const login = (u, p) => two(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }))
+  assert.equal((await login('b', 'pw-b')).status, 200, 'new account created')
+  assert.equal((await login('a', 'pw-a')).status, 200, 'existing password kept')
+})

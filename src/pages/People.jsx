@@ -90,8 +90,8 @@ export default function People() {
 
             <SearchInput value={q} onChange={setQ} placeholder="Enter Emp. Name or ID" />
             <div className="flex gap-2 mt-2">
-              <Select value={dept} onChange={setDept} options={['All departments', ...departments]} className="flex-1" />
-              <Select value={loc} onChange={setLoc} options={['All locations', ...locations]} className="flex-1" />
+              <Select value={dept} onChange={setDept} options={['All departments', ...departments]} className="flex-1 min-w-0" />
+              <Select value={loc} onChange={setLoc} options={['All locations', ...locations]} className="flex-1 min-w-0" />
             </div>
 
             <div className="mt-3 max-h-[26rem] overflow-y-auto">

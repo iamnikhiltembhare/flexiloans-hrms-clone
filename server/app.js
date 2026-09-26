@@ -44,19 +44,30 @@ function publicUser(record) {
   }
 }
 
-export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS }) {
+const DEMO_LOGINS = ACCOUNTS.map((a) => ({ ...a, password: DEMO_PASSWORDS[a.username] }))
+
+/**
+ * `accounts` are the logins this instance knows: [{ username, role, profile,
+ * password }]. Production uses the demo accounts; the test environment
+ * passes its own (see functions/api.js).
+ */
+export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, accounts = DEMO_LOGINS }) {
   if (!secret || secret.length < 32) throw new Error('HRMS_TOKEN_SECRET must be at least 32 characters')
 
   // --- data access --------------------------------------------------------
 
+  // Stored users, seeded on first use. Accounts added to the code later are
+  // created on the next request; existing users (and their passwords) are
+  // never overwritten.
   async function users() {
-    const existing = await store.get('users')
-    if (existing) return existing
-    const seeded = await Promise.all(ACCOUNTS.map(async (a) => ({
-      username: a.username, role: a.role, profile: a.profile, passwordHash: await hashPassword(DEMO_PASSWORDS[a.username]),
+    const existing = (await store.get('users')) || []
+    const missing = accounts.filter((a) => !existing.some((u) => u.username === a.username))
+    if (!missing.length) return existing
+    const created = await Promise.all(missing.map(async (a) => ({
+      username: a.username, role: a.role, profile: a.profile, passwordHash: await hashPassword(a.password),
     })))
-    // Another instance may have seeded first; keep whichever landed.
-    return store.update('users', (cur) => cur || seeded)
+    // Another instance may have seeded at the same time; merge by username.
+    return store.update('users', (cur) => [...(cur || []), ...created.filter((c) => !(cur || []).some((u) => u.username === c.username))])
   }
 
   const read = async (collection, username) =>

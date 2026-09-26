@@ -10,7 +10,8 @@
 import { createServer } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
-import { createApp, DEFAULT_ORIGINS } from './app.js'
+import { DEFAULT_ORIGINS } from './app.js'
+import { createEnvironments } from './environments.js'
 import { sqliteStore } from './store-sqlite.js'
 
 const port = Number(process.env.PORT) || 8787
@@ -24,8 +25,9 @@ if (!secret) {
 }
 
 const extra = (process.env.HRMS_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean)
-const handle = createApp({
-  store: sqliteStore(dbFile),
+// Production data in HRMS_DB; the /test/api environment in a sibling file.
+const handle = createEnvironments({
+  makeStore: (name) => sqliteStore(name === 'hrms' ? dbFile : dbFile.replace(/(\.db)?$/, '-test.db')),
   secret,
   allowedOrigins: [...DEFAULT_ORIGINS, ...extra],
 })

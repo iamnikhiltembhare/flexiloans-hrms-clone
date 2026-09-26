@@ -17,6 +17,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Two installable variants from one project, side by side on a phone:
+    //   prod - "FlexiLoans HRMS", production API        (assembleProdDebug)
+    //   qa   - "FlexiLoans HRMS Test", test environment (assembleQaDebug)
+    // The web bundle decides which API is used; see .env.android(test).
+    flavorDimensions = ["env"]
+    productFlavors {
+        prod {
+            dimension "env"
+            resValue "string", "app_name", "FlexiLoans HRMS"
+            resValue "string", "title_activity_main", "FlexiLoans HRMS"
+        }
+        qa {
+            dimension "env"
+            applicationIdSuffix ".test"
+            versionNameSuffix "-test"
+            resValue "string", "app_name", "FlexiLoans HRMS Test"
+            resValue "string", "title_activity_main", "FlexiLoans HRMS Test"
+        }
+    }
     signingConfigs {
         // A fixed, committed debug key (Android's standard public debug
         // password) so every CI build has the same signature and installs as

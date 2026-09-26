@@ -35,3 +35,30 @@ await png(svg(2732, mark(9, 1366, 1366), NAVY), 'splash.png')
 await png(svg(2732, mark(9, 1366, 1366), '#0f1e36'), 'splash-dark.png')
 
 console.log('Wrote icon and splash sources to assets/')
+
+// --- Test app (qa flavor) launcher icons ---------------------------------
+// Same mark with an amber TEST pill, written straight into the qa flavor's
+// resources so they override the main icons only in the test build.
+
+const AMBER = '#D97706'
+const pill = `
+  <rect x="302" y="738" width="420" height="124" rx="62" fill="${AMBER}"/>
+  <text x="512" y="826" text-anchor="middle" font-family="Helvetica, Arial, sans-serif"
+    font-size="86" font-weight="700" letter-spacing="6" fill="#FFFFFF">TEST</text>`
+const qaForeground = svg(1024, mark(7.2, 512, 452) + pill)
+const qaLegacy = svg(1024, mark(7.2, 512, 452) + pill, NAVY)
+const qaRound = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">' +
+  `<circle cx="512" cy="512" r="512" fill="${NAVY}"/>` + mark(7.2, 512, 452) + pill + '</svg>')
+
+const DENSITIES = { ldpi: 36, mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 }
+const qaRes = fileURLToPath(new URL('../android/app/src/qa/res/', import.meta.url))
+for (const [density, size] of Object.entries(DENSITIES)) {
+  const dir = qaRes + 'mipmap-' + density + '/'
+  mkdirSync(dir, { recursive: true })
+  const write = (buf, name) => sharp(buf).resize(size, size).png().toFile(dir + name)
+  await write(qaForeground, 'ic_launcher_foreground.png')
+  await write(qaLegacy, 'ic_launcher.png')
+  await write(qaRound, 'ic_launcher_round.png')
+}
+console.log('Wrote test-app launcher icons to android/app/src/qa/res/')

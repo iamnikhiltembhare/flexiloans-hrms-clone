@@ -160,8 +160,14 @@ body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -appl
 }
 
 .app-shell { height: 100vh; height: 100dvh; }
+
+/* Grid and flex children default to min-width:auto, so one wide table or
+   calendar forces its whole column wider than the phone. Let them shrink;
+   wide content then scrolls inside its own card. */
+.card, .grid > * { min-width: 0; }
 .topbar, .sidebar-head { height: calc(3.5rem + var(--safe-top)); padding-top: var(--safe-top); }
 .sidebar-foot { padding-bottom: calc(.75rem + var(--safe-bottom)); }
+.test-banner-floating { padding-top: calc(.25rem + var(--safe-top)); }
 .bottom-nav { padding-bottom: var(--safe-bottom); box-shadow: 0 -4px 16px -8px rgba(16,30,54,.12); }
 .toast-stack { bottom: calc(1.25rem + var(--safe-bottom)); }
 

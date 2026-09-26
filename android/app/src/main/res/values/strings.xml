@@ -1,7 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">FlexiLoans HRMS</string>
-    <string name="title_activity_main">FlexiLoans HRMS</string>
+    <!-- app_name and title_activity_main come from the product flavors in build.gradle. -->
     <string name="package_name">com.flexiloans.hrms</string>
     <string name="custom_url_scheme">com.flexiloans.hrms</string>
 </resources>

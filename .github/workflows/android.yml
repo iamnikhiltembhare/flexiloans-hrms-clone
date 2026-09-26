@@ -37,33 +37,46 @@ jobs:
       - run: npx oxlint src server
       - run: npm run test:server
 
-      # Web bundle pointed at the hosted API (.env.android), copied into the
-      # Android project.
-      - run: npx vite build --mode android
-      - run: npx cap sync android
-
-      - name: Build APK
-        working-directory: android
+      # Two apps from one project. Each web bundle is built, copied into the
+      # Android project, and packaged by its own flavor:
+      #   prod - production API          -> FlexiLoans-HRMS.apk
+      #   qa   - isolated test env + TEST -> FlexiLoans-HRMS-Test.apk
+      - name: Build production APK
         run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/FlexiLoans-HRMS.apk"
+          npx vite build --mode android
+          npx cap sync android
+          cd android && chmod +x gradlew && ./gradlew --no-daemon assembleProdDebug
+          cp app/build/outputs/apk/prod/debug/app-prod-debug.apk "$GITHUB_WORKSPACE/FlexiLoans-HRMS.apk"
+
+      - name: Build test APK
+        run: |
+          npx vite build --mode androidtest
+          npx cap sync android
+          cd android && ./gradlew --no-daemon assembleQaDebug
+          cp app/build/outputs/apk/qa/debug/app-qa-debug.apk "$GITHUB_WORKSPACE/FlexiLoans-HRMS-Test.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FlexiLoans-HRMS-apk
-          path: FlexiLoans-HRMS.apk
+          name: FlexiLoans-HRMS-apks
+          path: |
+            FlexiLoans-HRMS.apk
+            FlexiLoans-HRMS-Test.apk
 
       - name: Publish to the android-latest release
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Built from ${GITHUB_SHA::7} on $(date -u '+%Y-%m-%d %H:%M UTC'). Install on Android: open this page on the phone, download FlexiLoans-HRMS.apk, allow installs from your browser when asked."
+          notes="Built from ${GITHUB_SHA::7} on $(date -u '+%Y-%m-%d %H:%M UTC').
+
+          - FlexiLoans-HRMS.apk - the app, production data.
+          - FlexiLoans-HRMS-Test.apk - separate test app (installs alongside, amber TEST badge) with its own test data and test logins: test.employee / TestEmp@2026, test.hr / TestHR@2026, test.admin / TestAdmin@2026.
+
+          Install: open this page on the phone, download the APK, allow installs from your browser when asked."
           if gh release view android-latest >/dev/null 2>&1; then
-            gh release upload android-latest FlexiLoans-HRMS.apk --clobber
+            gh release upload android-latest FlexiLoans-HRMS.apk FlexiLoans-HRMS-Test.apk --clobber
             gh release edit android-latest --notes "$notes" --target "$GITHUB_SHA"
           else
-            gh release create android-latest FlexiLoans-HRMS.apk --prerelease \
+            gh release create android-latest FlexiLoans-HRMS.apk FlexiLoans-HRMS-Test.apk --prerelease \
               --title "FlexiLoans HRMS - latest Android build" --notes "$notes" --target "$GITHUB_SHA"
           fi

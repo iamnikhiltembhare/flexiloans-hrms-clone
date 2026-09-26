@@ -1,7 +1,7 @@
-// Netlify Function entry point: serves every /api/* route from app.js,
-// with data kept in Netlify Blobs.
+// Netlify Function entry point: serves /api/* (production) and /test/api/*
+// (test environment) from app.js, with data kept in Netlify Blobs.
 
-import { createApp } from '../app.js'
+import { createEnvironments } from '../environments.js'
 import { blobsStore } from '../store-blobs.js'
 
 let handle
@@ -14,8 +14,8 @@ export default async (req) => {
       { error: 'Server not configured: set HRMS_TOKEN_SECRET (32+ random characters) on this Netlify site, then redeploy.' },
       { status: 503 })
   }
-  handle ??= createApp({
-    store: blobsStore(),
+  handle ??= createEnvironments({
+    makeStore: blobsStore,
     secret,
     allowedOrigins: process.env.HRMS_ALLOWED_ORIGINS
       ? process.env.HRMS_ALLOWED_ORIGINS.split(',').map((s) => s.trim())
@@ -24,4 +24,4 @@ export default async (req) => {
   return handle(req)
 }
 
-export const config = { path: '/api/*' }
+export const config = { path: ['/api/*', '/test/api/*'] }

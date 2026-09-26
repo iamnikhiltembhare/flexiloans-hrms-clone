@@ -31,6 +31,7 @@ Thumbs.db
 !.env.example
 # Public API URL for the Android build - safe to commit.
 !.env.android
+!.env.androidtest
 
 # local API database
 server/data/

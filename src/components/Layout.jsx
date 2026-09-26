@@ -4,6 +4,7 @@ import { RefreshCw, WifiOff } from 'lucide-react'
 import Sidebar from './Sidebar.jsx'
 import Topbar from './Topbar.jsx'
 import DemoBanner from './DemoBanner.jsx'
+import TestBanner from './TestBanner.jsx'
 import BottomNav from './BottomNav.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { usePullToRefresh } from '../lib/usePullToRefresh.js'
@@ -22,6 +23,7 @@ export default function Layout() {
       <Sidebar open={open} onClose={() => setOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onMenu={() => setOpen(true)} />
+        <TestBanner />
         <DemoBanner />
         <main ref={scroller} className="relative flex-1 overflow-y-auto overscroll-contain p-4 md:p-6">
           {online && (pull > 0 || refreshing) && (

@@ -159,16 +159,34 @@ Capacitor wraps the full-stack build into a native Android app
 pull-to-refresh, edge-to-edge layout, the hardware back button, haptics and a
 branded splash screen. It talks to the hosted API (see `.env.android`).
 
+### Test build
+
+A second app, **FlexiLoans HRMS Test** (`com.flexiloans.hrms.test`), installs
+alongside the real one. It has an amber TEST icon and banner, talks to the
+API's isolated test environment (`/test/api`, its own data and signing key),
+and lists its test-only logins on the sign-in page:
+
+| Role | Username | Password |
+|------|----------|----------|
+| Employee | `test.employee` | `TestEmp@2026` |
+| HR Professional | `test.hr` | `TestHR@2026` |
+| Super Admin | `test.admin` | `TestAdmin@2026` |
+
+These accounts exist only in the test environment; the production app and
+API reject them, and the demo accounts do not work in the test app. To wipe
+the test data, sign in as `test.admin` -> Settings -> Reset.
+
 ### Getting the APK
 
 Every push to `main` runs `.github/workflows/android.yml`, which builds the
-APK and publishes it to the **android-latest** release:
+production and test APKs and publishes both to the **android-latest** release:
 
 ```
 https://github.com/iamnikhiltembhare/flexiloans-hrms-clone/releases/tag/android-latest
 ```
 
-Open that on the phone, download `FlexiLoans-HRMS.apk`, and allow installs
+Open that on the phone, download `FlexiLoans-HRMS.apk` (or
+`FlexiLoans-HRMS-Test.apk`), and allow installs
 from the browser when Android asks. Newer builds install over older ones.
 
 The APK is signed with a committed *debug* key so every build can update the
@@ -181,8 +199,11 @@ Needs JDK 21 and the Android SDK (Android Studio provides both):
 
 ```bash
 npm run build:android          # web bundle for Android + cap sync
-cd android && ./gradlew assembleDebug
-# -> android/app/build/outputs/apk/debug/app-debug.apk
+cd android && ./gradlew assembleProdDebug
+# -> android/app/build/outputs/apk/prod/debug/app-prod-debug.apk
+
+# test app: npx vite build --mode androidtest && npx cap sync android
+# then ./gradlew assembleQaDebug -> apk/qa/debug/app-qa-debug.apk
 npx cap open android           # or open the project in Android Studio
 ```
 

@@ -1,15 +1,26 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
 import { ACCOUNTS, ROLES, DEMO_PASSWORDS } from '../data/accounts.js'
 import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
-import { API_MODE } from '../lib/api.js'
+import { API_MODE, IS_TEST_BUILD } from '../lib/api.js'
+import { TEST_ACCOUNTS, TEST_PASSWORDS } from '../data/testAccounts.js'
+import TestBanner from '../components/TestBanner.jsx'
+
+// Quick-fill logins: test users in a test build, demo users in the offline
+// demo, none in production (both conditions are build-time constants, so the
+// passwords are stripped from any build that does not show them).
+const QUICK_LOGINS = IS_TEST_BUILD
+  ? { title: 'Test build - test logins', list: TEST_ACCOUNTS, passwords: TEST_PASSWORDS }
+  : !API_MODE
+    ? { title: 'Demo build - test logins', list: ACCOUNTS, passwords: DEMO_PASSWORDS }
+    : null
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, user } = useAuth()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -31,8 +42,12 @@ export default function Login() {
 
   const fill = (u, p) => { setUsername(u); setPassword(p); setError('') }
 
+  // Already signed in (for example the app was reopened on this screen).
+  if (user) return <Navigate to="/" replace />
+
   return (
     <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-white flex items-center justify-center px-4">
+      <TestBanner floating />
       {/* Parallax backdrop: three depth layers that track the pointer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="layer layer-1 absolute -top-24 -left-24 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-50 drift-slow"
@@ -99,11 +114,11 @@ export default function Login() {
 
         <p className="mt-8 text-center text-[12px] text-muted">{BRAND.poweredBy}</p>
 
-        {!API_MODE && (
+        {QUICK_LOGINS && (
         <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">Demo build - test logins</p>
-          {ACCOUNTS.map((a) => (
-            <button key={a.username} type="button" onClick={() => fill(a.username, DEMO_PASSWORDS[a.username])}
+          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">{QUICK_LOGINS.title}</p>
+          {QUICK_LOGINS.list.map((a) => (
+            <button key={a.username} type="button" onClick={() => fill(a.username, QUICK_LOGINS.passwords[a.username])}
               className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-white hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-[12px] font-medium text-navy">{ROLES[a.role].label}</span>
@@ -112,7 +127,7 @@ export default function Login() {
               <span className="block text-[10px] text-muted mt-0.5">{ROLES[a.role].description}</span>
             </button>
           ))}
-          <p className="text-[10px] text-faint mt-2 px-2.5">Click a row to fill the form.</p>
+          <p className="text-[10px] text-faint mt-2 px-2.5">Tap a row to fill the form.</p>
         </div>
         )}
       </div>

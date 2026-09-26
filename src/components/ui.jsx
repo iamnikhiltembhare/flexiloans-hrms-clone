@@ -120,7 +120,7 @@ export function SearchInput({ value, onChange, placeholder = 'Search...' }) {
 
 export function Select({ value, onChange, options, className = '' }) {
   return (
-    <select className={'input py-1.5 text-xs w-auto ' + className} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className={'input py-1.5 text-xs w-auto max-w-full ' + className} value={value} onChange={(e) => onChange(e.target.value)}>
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
   )
@@ -163,7 +163,7 @@ export function Field({ label, value }) {
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-faint">{label}</p>
-      <p className="text-[13px] font-medium text-[#2B3445] mt-0.5">{value || '--'}</p>
+      <p className="text-[13px] font-medium text-[#2B3445] mt-0.5 [overflow-wrap:anywhere]">{value || '--'}</p>
     </div>
   )
 }

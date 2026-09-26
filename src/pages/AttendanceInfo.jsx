@@ -41,11 +41,11 @@ export default function AttendanceInfo() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <Card bodyClass="p-3">
-          <header className="flex items-center justify-between gap-3 px-1 pb-3">
-            <button className="btn-ghost px-2 py-1" onClick={() => step(-1)}><ChevronLeft size={13} /> Prev</button>
+          <header className="flex items-center justify-between gap-2 sm:gap-3 px-1 pb-3">
+            <button className="btn-ghost px-2 py-1" onClick={() => step(-1)} aria-label="Previous month"><ChevronLeft size={13} /><span className="hidden sm:inline"> Prev</span></button>
             <h2 className="h2">{MONTHS[cursor.m]} {cursor.y}</h2>
             <div className="flex items-center gap-2">
-              <button className="btn-ghost px-2 py-1" onClick={() => step(1)}>Next <ChevronRight size={13} /></button>
+              <button className="btn-ghost px-2 py-1" onClick={() => step(1)} aria-label="Next month"><span className="hidden sm:inline">Next </span><ChevronRight size={13} /></button>
               <span className="flex rounded-lg border border-line overflow-hidden">
                 <button onClick={() => setView('grid')} aria-label="Grid view"
                   className={'px-2 py-1.5 ' + (view === 'grid' ? 'bg-cyan text-white' : 'text-muted hover:bg-canvas')}>
