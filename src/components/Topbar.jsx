@@ -54,6 +54,19 @@ export default function Topbar({ onMenu }) {
   // ever left mounted over the page.
   useEffect(() => { setFocused(false); setQ(''); setBell(false); setMenu(false) }, [location.pathname])
 
+  // Ctrl/Cmd+K (or "/" when not typing) jumps to search, as on most desktop apps.
+  useEffect(() => {
+    const onKey = (e) => {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // Close the search results on any click outside the search box.
   useEffect(() => {
     if (!focused) return
@@ -90,12 +103,17 @@ export default function Topbar({ onMenu }) {
     <header className="topbar h-14 shrink-0 bg-surface border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
       <button className="lg:hidden text-navy" onClick={onMenu} aria-label="Open menu"><Menu size={20} /></button>
 
-      <div ref={searchRef} className="hidden md:block relative w-72">
+      <div ref={searchRef} className="hidden md:block relative w-72 xl:w-80">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
         <input ref={inputRef} className="input pl-8 pr-7 py-1.5 text-xs bg-canvas"
           placeholder="Search people, pages, tickets..." value={q}
           onChange={(e) => setQ(e.target.value)} onFocus={() => setFocused(true)}
           onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); e.currentTarget.blur() } }} />
+        {!q && !focused && (
+          <kbd className="hidden lg:block pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-line bg-surface px-1.5 py-px font-mono text-[10px] text-faint">
+            {/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}
+          </kbd>
+        )}
         {q && (
           <button onClick={() => { setQ(''); inputRef.current?.focus() }}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-faint hover:text-navy" aria-label="Clear search"><X size={13} /></button>

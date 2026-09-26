@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { RefreshCw, WifiOff } from 'lucide-react'
 import Sidebar from './Sidebar.jsx'
@@ -9,9 +9,20 @@ import BottomNav from './BottomNav.jsx'
 import MobileMenu from './MobileMenu.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { usePullToRefresh } from '../lib/usePullToRefresh.js'
+import { readStored, writeStored } from '../lib/persist.js'
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
+  // Desktop sidebar: full or icon rail, remembered; Ctrl/Cmd+B toggles it.
+  const [collapsed, setCollapsed] = useState(() => readStored('sidebarCollapsed', false))
+  const toggleSidebar = () => setCollapsed((c) => { writeStored('sidebarCollapsed', !c); return !c })
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleSidebar() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const location = useLocation()
   const { online, ready, loadError, refresh, toast } = useApp()
 
@@ -21,7 +32,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell flex overflow-hidden bg-canvas">
-      <Sidebar />
+      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onMenu={() => setOpen(true)} />
         <TestBanner />
@@ -41,7 +52,7 @@ export default function Layout() {
             <Connecting error={loadError} onRetry={refresh} />
           ) : (
             // keyed on the path so each page fades in on navigation
-            <div key={location.pathname} className="page-enter" style={pull ? { transform: `translateY(${pull * 0.35}px)` } : undefined}>
+            <div key={location.pathname} className="page-enter mx-auto w-full max-w-[1480px]" style={pull ? { transform: `translateY(${pull * 0.35}px)` } : undefined}>
               <Outlet />
             </div>
           )}

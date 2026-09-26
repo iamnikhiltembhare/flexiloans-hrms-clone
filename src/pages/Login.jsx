@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { User, Lock, Eye, EyeOff } from 'lucide-react'
+import { User, Lock, Eye, EyeOff, CalendarCheck, CalendarDays, Wallet, Smartphone, CheckCircle2, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
@@ -9,6 +9,7 @@ import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
 import { API_MODE, IS_TEST_BUILD } from '../lib/api.js'
 import { TEST_ACCOUNTS, TEST_PASSWORDS } from '../data/testAccounts.js'
 import TestBanner from '../components/TestBanner.jsx'
+import { ThemeToggle } from '../components/ThemeToggle.jsx'
 
 // Quick-fill logins: test users in a test build, demo users in the offline
 // demo, none in production (both conditions are build-time constants, so the
@@ -46,8 +47,11 @@ export default function Login() {
   if (user) return <Navigate to="/" replace />
 
   return (
+    <div className="min-h-screen bg-surface lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+    <BrandPanel />
     <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-surface flex items-center justify-center px-4">
       <TestBanner floating />
+      <div className="login-theme absolute right-4 z-20"><ThemeToggle /></div>
       {/* Parallax backdrop: three depth layers that track the pointer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div className="layer layer-1 absolute -top-24 -left-24 h-[26rem] w-[26rem] rounded-full blur-3xl opacity-50 drift-slow"
@@ -69,7 +73,11 @@ export default function Login() {
       </div>
 
       <div className="layer-card relative w-full max-w-sm rise">
-        <div className="flex justify-center mb-8 drift-slow"><Logo variant="dark" size={40} /></div>
+        <div className="flex justify-center mb-8 drift-slow lg:hidden"><Logo variant="dark" size={40} /></div>
+        <div className="hidden lg:block mb-7">
+          <h1 className="text-[28px] font-bold tracking-tight text-navy">Welcome back</h1>
+          <p className="text-[13.5px] text-muted mt-1">Sign in to your {BRAND.company} workspace.</p>
+        </div>
 
         {IS_PUBLIC_DEMO && (
           <div className="mb-5 rounded-card border-l-[3px] border-[#D97706] bg-[rgba(217,119,6,0.08)] px-3.5 py-2.5">
@@ -112,7 +120,7 @@ export default function Login() {
           <li><a href="#" className="text-navy underline hover:text-cyan">Forgot your username?</a></li>
         </ul>
 
-        <p className="mt-8 text-center text-[12px] text-muted">{BRAND.poweredBy}</p>
+        <p className="mt-8 text-center text-[12px] text-muted lg:hidden">{BRAND.poweredBy}</p>
 
         {QUICK_LOGINS && (
         <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
@@ -132,5 +140,52 @@ export default function Login() {
         )}
       </div>
     </div>
+    </div>
+  )
+}
+
+// Desktop-only left half of the sign-in page: brand, what the app does, and
+// a couple of floating preview cards.
+const FEATURES = [
+  { icon: CalendarCheck, text: 'Punch in and track attendance' },
+  { icon: CalendarDays, text: 'Apply for and approve leave in seconds' },
+  { icon: Wallet, text: 'Payslips, Form 16 and tax declarations' },
+  { icon: Smartphone, text: 'The same account on the Android app' },
+]
+
+function BrandPanel() {
+  return (
+    <aside className="login-brand hidden lg:flex relative overflow-hidden flex-col justify-between p-12 xl:p-16 text-white">
+      <Logo variant="light" size={40} />
+
+      <div className="relative z-10 max-w-lg">
+        <h2 className="text-[40px] xl:text-[46px] font-bold leading-[1.08] tracking-tight">
+          Everything your people need, <span className="text-cyan">in one place.</span>
+        </h2>
+        <p className="mt-4 text-[15px] text-white/70 max-w-md">
+          Attendance, leave, payroll and requests for every {BRAND.company} employee - on the web and on your phone.
+        </p>
+        <ul className="mt-8 space-y-3">
+          {FEATURES.map(({ icon: Icon, text }, i) => (
+            <li key={text} className="flex items-center gap-3 text-[14px] text-white/85 rise" style={{ animationDelay: 120 + i * 70 + 'ms' }}>
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 ring-1 ring-white/15"><Icon size={17} className="text-cyan" /></span>
+              {text}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Floating preview cards */}
+      <div className="pointer-events-none absolute right-10 top-24 w-60 rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-md p-4 drift" aria-hidden="true">
+        <p className="flex items-center gap-2 text-[12px] font-semibold"><CheckCircle2 size={15} className="text-[#4ADE80]" /> Leave approved</p>
+        <p className="mt-1 text-[11px] text-white/65">2 days of Casual Leave - 12 to 13 Oct</p>
+      </div>
+      <div className="pointer-events-none absolute right-24 bottom-32 w-52 rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur-md p-4 drift-slow" aria-hidden="true">
+        <p className="flex items-center gap-2 text-[12px] font-semibold"><Clock size={15} className="text-cyan" /> Punched in</p>
+        <p className="mt-1 text-[22px] font-mono font-semibold">09:34 AM</p>
+      </div>
+
+      <p className="relative z-10 text-[12px] text-white/50">{BRAND.poweredBy}</p>
+    </aside>
   )
 }

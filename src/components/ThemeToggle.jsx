@@ -42,3 +42,20 @@ export function ThemeSwitch() {
     </div>
   )
 }
+
+/** Icon-only Light / Dark / System switch for the navy desktop sidebar. */
+export function ThemeIconSwitch() {
+  const { choice, setTheme } = useTheme()
+  return (
+    <div className="flex gap-0.5 rounded-xl bg-white/[.07] p-0.5" role="radiogroup" aria-label="Appearance">
+      {OPTIONS.map(({ value, label, icon: Icon }) => (
+        <button key={value} type="button" role="radio" aria-checked={choice === value} title={label + ' theme'} aria-label={label + ' theme'}
+          onClick={() => setTheme(value)}
+          className={'h-7 w-7 grid place-items-center rounded-lg transition-colors ' +
+            (choice === value ? 'bg-white/20 text-white shadow-sm' : 'text-white/55 hover:text-white hover:bg-white/10')}>
+          <Icon size={14} />
+        </button>
+      ))}
+    </div>
+  )
+}
