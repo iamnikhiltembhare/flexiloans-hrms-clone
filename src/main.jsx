@@ -13,6 +13,7 @@ import '@fontsource/inter/latin-700.css'
 import '@fontsource/dm-mono/latin-400.css'
 import '@fontsource/dm-mono/latin-500.css'
 import './index.css'
+import './lib/theme.js'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

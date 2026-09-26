@@ -143,7 +143,7 @@ export default function SuperAdminDashboard() {
             ['Employee records', employees.length, 'green'],
           ].map(([label, value, tone]) => (
             <div key={label} className="flex items-center justify-between gap-3 py-2.5 border-b border-line last:border-0">
-              <span className="text-[12px] text-[#2B3445]">{label}</span>
+              <span className="text-[12px] text-body">{label}</span>
               <Badge tone={tone}>{value}</Badge>
             </div>
           ))}

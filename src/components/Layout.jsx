@@ -6,6 +6,7 @@ import Topbar from './Topbar.jsx'
 import DemoBanner from './DemoBanner.jsx'
 import TestBanner from './TestBanner.jsx'
 import BottomNav from './BottomNav.jsx'
+import MobileMenu from './MobileMenu.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { usePullToRefresh } from '../lib/usePullToRefresh.js'
 
@@ -20,7 +21,7 @@ export default function Layout() {
 
   return (
     <div className="app-shell flex overflow-hidden bg-canvas">
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar onMenu={() => setOpen(true)} />
         <TestBanner />
@@ -29,7 +30,7 @@ export default function Layout() {
           {online && (pull > 0 || refreshing) && (
             <div className="pointer-events-none absolute left-0 right-0 top-0 flex justify-center z-10"
               style={{ transform: `translateY(${pull - 34}px)`, transition: refreshing || pull === 0 ? 'transform .25s' : 'none' }}>
-              <span className="h-9 w-9 rounded-full bg-white shadow-card border border-line flex items-center justify-center">
+              <span className="h-9 w-9 rounded-full bg-surface shadow-card border border-line flex items-center justify-center">
                 <RefreshCw size={16} className={'text-cyan-ink ' + (refreshing ? 'animate-spin' : '')}
                   style={refreshing ? undefined : { transform: `rotate(${(pull / trigger) * 270}deg)`, opacity: Math.min(1, pull / trigger) }} />
               </span>
@@ -47,6 +48,7 @@ export default function Layout() {
         </main>
         <BottomNav onMore={() => setOpen(true)} />
       </div>
+      <MobileMenu open={open} onClose={() => setOpen(false)} />
     </div>
   )
 }

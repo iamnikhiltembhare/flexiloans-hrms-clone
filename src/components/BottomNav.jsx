@@ -29,7 +29,7 @@ export default function BottomNav({ onMore }) {
     (active ? 'bg-cyan-bg text-navy scale-100' : 'text-muted scale-95')
 
   return (
-    <nav className="bottom-nav lg:hidden shrink-0 bg-white/95 backdrop-blur border-t border-line flex" aria-label="Primary">
+    <nav className="bottom-nav lg:hidden shrink-0 bg-surface/95 backdrop-blur border-t border-line flex" aria-label="Primary">
       {tabsFor(can).map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} onClick={() => haptic()} className={item}>
           {({ isActive }) => (
@@ -43,7 +43,7 @@ export default function BottomNav({ onMore }) {
       <button type="button" className={item} onClick={() => { haptic(); onMore() }}>
         <span className={pill(false)}>
           <Menu size={19} />
-          {unread > 0 && <span className="absolute top-1.5 right-[calc(50%-1.1rem)] h-2 w-2 rounded-full bg-[#DC2626] ring-2 ring-white" />}
+          {unread > 0 && <span className="absolute top-1.5 right-[calc(50%-1.1rem)] h-2 w-2 rounded-full bg-[#DC2626] ring-2 ring-surface" />}
         </span>
         <span className="text-muted">More</span>
       </button>

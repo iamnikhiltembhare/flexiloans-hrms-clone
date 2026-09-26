@@ -25,7 +25,7 @@ function Month({ year, month, label, marks, onPick }) {
   const count = Object.keys(marks).filter((k) => k.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)).length
 
   return (
-    <section className="rounded-card border border-line bg-white p-3">
+    <section className="rounded-card border border-line bg-surface p-3">
       <header className="flex items-baseline justify-between mb-2">
         <h3 className="text-[13px] font-semibold text-navy">{label}</h3>
         {count > 0 && <span className="text-[10px] font-mono text-muted">{count}</span>}
@@ -44,10 +44,10 @@ function Month({ year, month, label, marks, onPick }) {
 
           const tone =
             mark?.kind === 'applied' ? 'bg-[#16A34A] text-white font-semibold'
-            : mark?.kind === 'company' ? 'bg-navy text-white font-semibold'
+            : mark?.kind === 'company' ? 'bg-brand text-white font-semibold'
             : mark?.kind === 'optional' ? 'bg-cyan-bg text-[#0097B2] font-medium ring-1 ring-cyan/40'
             : weekend ? 'text-faint'
-            : 'text-[#2B3445]'
+            : 'text-body'
 
           return (
             <button

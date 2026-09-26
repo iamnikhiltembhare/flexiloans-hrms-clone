@@ -70,7 +70,7 @@ export default function AttendanceInfo() {
                 return (
                   <button key={r.date} onClick={() => setSelected(r.date)}
                     className={'min-h-[4.5rem] rounded-lg border p-1.5 text-left transition-all duration-150 hover:border-cyan ' +
-                      (active ? 'border-cyan ring-2 ring-cyan/25 bg-cyan-bg/40' : 'border-line bg-white')}>
+                      (active ? 'border-cyan ring-2 ring-cyan/25 bg-cyan-bg/40' : 'border-line bg-surface')}>
                     <span className="flex items-start justify-between">
                       <span className={'text-[12px] font-medium ' + (active ? 'text-cyan-hover' : 'text-navy')}>
                         {String(r.day).padStart(2, '0')}

@@ -109,7 +109,7 @@ export default function Payroll() {
               ]}
               rows={salaryBreakup.earnings}
             />
-            <div className="flex justify-between px-3 py-3 bg-navy text-white text-[13px] font-medium">
+            <div className="flex justify-between px-3 py-3 bg-brand text-white text-[13px] font-medium">
               <span>Total earnings</span><span className="font-mono">{INR(totalEarn)} / month</span>
             </div>
           </Card>
@@ -154,7 +154,7 @@ export default function Payroll() {
             ))}
           </div>
           <div className="mt-4 rounded-lg border-l-[3px] border-cyan bg-cyan-bg px-3.5 py-3">
-            <p className="text-[12px] text-[#2B3445]">
+            <p className="text-[12px] text-body">
               You are on the <strong>new tax regime</strong>. Deductions under 80C and 80D do not reduce taxable income under this regime.
               Switch regimes from Settings before the declaration window closes if you want them applied.
             </p>

@@ -17,7 +17,7 @@ export default function Modal({ open, onClose, title, subtitle, children, footer
   // the top bar or the bottom navigation.
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:overflow-y-auto sm:p-8">
-      <div className="fixed inset-0 bg-navy/40 backdrop-blur-[2px]" style={{ animation: 'fl-fade .2s ease-out both' }} onClick={onClose} />
+      <div className="fixed inset-0 bg-brand-900/60 backdrop-blur-[2px]" style={{ animation: 'fl-fade .2s ease-out both' }} onClick={onClose} />
       <div className={'modal-panel relative w-full ' + width + ' card sm:my-auto'} role="dialog" aria-modal="true">
         <div className="sm:hidden flex justify-center pt-2.5 -mb-1" aria-hidden="true"><span className="h-1 w-10 rounded-full bg-line2" /></div>
         <header className="flex items-start justify-between gap-3 px-4 py-3 border-b border-line">

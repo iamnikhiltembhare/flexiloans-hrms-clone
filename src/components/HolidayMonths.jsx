@@ -13,7 +13,7 @@ export default function HolidayMonths({ year, holidays, appliedDates, onApply, q
         const rows = holidays.filter((h) => h.date.startsWith(`${year}-${month}`))
         return (
           <section key={label}
-            className="rounded-card border border-line bg-white shadow-card overflow-hidden flex flex-col
+            className="rounded-card border border-line bg-surface shadow-card overflow-hidden flex flex-col
                        transition-shadow duration-300 hover:shadow-[0_14px_30px_-20px_rgba(27,54,93,.45)]">
             <header className="px-4 pt-3.5 pb-2">
               <h3 className="text-[12px] font-semibold uppercase tracking-[0.07em] text-navy/70">
@@ -41,7 +41,7 @@ export default function HolidayMonths({ year, holidays, appliedDates, onApply, q
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className={'block text-[13px] leading-snug ' + (h.optional ? 'text-[#2B3445]' : 'text-navy font-medium')}>
+                      <span className={'block text-[13px] leading-snug ' + (h.optional ? 'text-body' : 'text-navy font-medium')}>
                         {h.name}
                       </span>
                       {weekendDay && (

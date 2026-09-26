@@ -108,7 +108,7 @@ export default function EmployeeDetail() {
             {goals.map((g) => (
               <div key={g.title}>
                 <div className="flex justify-between gap-3 text-[13px] mb-1.5">
-                  <span className="text-[#2B3445]">{g.title}</span>
+                  <span className="text-body">{g.title}</span>
                   <span className="font-mono text-navy shrink-0">{g.progress}%</span>
                 </div>
                 <Progress value={g.progress} color={g.status === 'On Track' ? '#16A34A' : g.status === 'At Risk' ? '#D97706' : '#DC2626'} />

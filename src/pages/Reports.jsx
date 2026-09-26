@@ -149,7 +149,7 @@ export default function Reports() {
             </ResponsiveContainer>
           </div>
           <div className="mt-4 rounded-lg border-l-[3px] border-cyan bg-cyan-bg px-3.5 py-3">
-            <p className="text-[12px] text-[#2B3445]">
+            <p className="text-[12px] text-body">
               Annualised voluntary attrition sits at <strong>16.2%</strong>, slightly above the 15% target.
               Collections and Sales account for just over half of all exits this half-year.
             </p>

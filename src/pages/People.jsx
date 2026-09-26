@@ -149,7 +149,7 @@ export default function People() {
             <div className="min-w-[52rem]">
               {/* Root */}
               <div className="flex justify-center">
-                <div className="rounded-card border-2 border-navy bg-navy text-white px-5 py-3 text-center">
+                <div className="rounded-card border-2 border-brand bg-brand text-white px-5 py-3 text-center">
                   <p className="text-[13px] font-semibold">Rakesh Menon</p>
                   <p className="text-[10px] text-white/60">Chief Executive Officer</p>
                 </div>
@@ -172,7 +172,7 @@ export default function People() {
                       <div key={m.id} className="w-full flex flex-col items-center">
                         <div className="h-4 w-px bg-line" />
                         <button onClick={() => setOpen(m)}
-                          className="lift rounded-lg border border-line bg-white px-2.5 py-2 w-full text-center hover:border-cyan">
+                          className="lift rounded-lg border border-line bg-surface px-2.5 py-2 w-full text-center hover:border-cyan">
                           <p className="text-[11px] font-medium text-navy truncate">{m.name}</p>
                           <p className="text-[9px] text-muted truncate">{m.designation}</p>
                         </button>
@@ -204,7 +204,7 @@ export default function People() {
               ['Location', open.location], ['Reporting to', open.manager], ['Date of joining', open.joinDate]].map(([k, v]) => (
               <div key={k}>
                 <p className="text-[10px] uppercase tracking-wide text-faint">{k}</p>
-                <p className="text-[13px] text-[#2B3445] mt-0.5">{v}</p>
+                <p className="text-[13px] text-body mt-0.5">{v}</p>
               </div>
             ))}
           </div>

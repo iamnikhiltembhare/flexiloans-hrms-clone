@@ -18,7 +18,7 @@ export function Card({ title, subtitle, actions, className = '', bodyClass = 'p-
   return (
     <section ref={ref} className={'card reveal ' + className}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b-2 border-line bg-[#FAFBFD] rounded-t-card">
+        <header className="flex items-center justify-between gap-3 px-4 py-3 border-b-2 border-line bg-surface-2 rounded-t-card">
           <div>
             {title && <h2 className="h2">{title}</h2>}
             {subtitle && <p className="text-[11px] text-muted mt-0.5">{subtitle}</p>}
@@ -38,7 +38,7 @@ const TONES = {
   blue: 'bg-[#DBEAFE] text-[#1D4ED8] ring-1 ring-[#1D4ED8]/20',
   purple: 'bg-[#EDE9FE] text-[#6D28D9] ring-1 ring-[#6D28D9]/20',
   cyan: 'bg-[#CFF3FA] text-[#00647B] ring-1 ring-[#00647B]/20',
-  gray: 'bg-[#E8EDF4] text-[#3F4A5A] ring-1 ring-[#3F4A5A]/15',
+  gray: 'bg-line/60 text-body ring-1 ring-body/15',
 }
 
 export function Badge({ tone = 'gray', children }) {
@@ -95,7 +95,7 @@ export function Table({ columns, rows, empty = 'Nothing to show yet.' }) {
           )}
           {rows.map((row, i) => (
             <tr key={row.id || i}
-              className={'transition-colors duration-150 hover:bg-[#DFF4FA] ' + (i % 2 ? 'bg-[#F6F8FC]' : 'bg-white')}>
+              className={'transition-colors duration-150 hover:bg-[#DFF4FA] ' + (i % 2 ? 'bg-surface-2' : 'bg-surface')}>
               {columns.map((c) => (
                 <td key={c.key} className={'td ' + (c.align === 'right' ? 'text-right' : '') + (c.mono ? ' font-mono text-xs' : '')}>
                   {c.render ? c.render(row) : row[c.key]}
@@ -128,7 +128,7 @@ export function Select({ value, onChange, options, className = '' }) {
 
 export function Progress({ value, color = '#00B4D8' }) {
   return (
-    <div className="h-2 w-full rounded-full bg-[#DCE3EC] overflow-hidden">
+    <div className="h-2 w-full rounded-full bg-line overflow-hidden">
       <div className="h-full rounded-full bar-fill" style={{ width: Math.min(100, value) + '%', background: color }} />
     </div>
   )
@@ -163,7 +163,7 @@ export function Field({ label, value }) {
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-faint">{label}</p>
-      <p className="text-[13px] font-medium text-[#2B3445] mt-0.5 [overflow-wrap:anywhere]">{value || '--'}</p>
+      <p className="text-[13px] font-medium text-body mt-0.5 [overflow-wrap:anywhere]">{value || '--'}</p>
     </div>
   )
 }

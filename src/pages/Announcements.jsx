@@ -55,7 +55,7 @@ export default function Announcements() {
                   </h2>
                   <Badge tone={TAG_TONE[a.tag] || 'gray'}>{a.tag}</Badge>
                 </div>
-                <p className="text-[13px] text-[#2B3445] mt-1.5 leading-relaxed whitespace-pre-line">{a.body}</p>
+                <p className="text-[13px] text-body mt-1.5 leading-relaxed whitespace-pre-line">{a.body}</p>
                 <p className="text-[11px] text-faint mt-2.5">Posted by {a.author} on {a.date}</p>
               </div>
             </div>

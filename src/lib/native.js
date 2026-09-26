@@ -2,7 +2,7 @@
 // browser, so the web build and the Android app share the same code.
 
 import { useEffect, useRef } from 'react'
-import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core'
+import { Capacitor } from '@capacitor/core'
 import { App as NativeApp } from '@capacitor/app'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { SplashScreen } from '@capacitor/splash-screen'
@@ -48,8 +48,7 @@ export function startNative({ goBack }) {
   if (!IS_NATIVE) return () => {}
   document.documentElement.classList.add('native')
 
-  // Dark status-bar icons over the white top bar.
-  SystemBars.setStyle({ style: SystemBarsStyle.Light }).catch(() => {})
+  // Status-bar icon colour follows the theme (lib/theme.js).
   // Let React paint once before revealing the app.
   requestAnimationFrame(() => SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}))
 

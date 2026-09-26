@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { Avatar } from './ui.jsx'
 import { haptic, useBackHandler } from '../lib/native.js'
+import { ThemeToggle } from './ThemeToggle.jsx'
 
 // Server notifications carry an ISO timestamp; seed data has a fixed label.
 function when(n) {
@@ -86,7 +87,7 @@ export default function Topbar({ onMenu }) {
   }
 
   return (
-    <header className="topbar h-14 shrink-0 bg-white border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
+    <header className="topbar h-14 shrink-0 bg-surface border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
       <button className="lg:hidden text-navy" onClick={onMenu} aria-label="Open menu"><Menu size={20} /></button>
 
       <div ref={searchRef} className="hidden md:block relative w-72">
@@ -138,11 +139,13 @@ export default function Topbar({ onMenu }) {
 
       <span className="hidden xl:block text-[11px] text-muted ml-1">{today}</span>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <button onClick={onPunch} className={punchedIn ? 'btn-secondary' : 'btn-primary'}>
           <Clock size={13} />
           {punchedIn ? 'Punch out' : 'Punch in'}
         </button>
+
+        <ThemeToggle />
 
         <div className="relative">
           <button onClick={() => setBell((v) => !v)}
@@ -214,9 +217,9 @@ export default function Topbar({ onMenu }) {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
               <div className="absolute right-0 mt-1.5 w-52 card p-1 z-20 origin-top-right" style={{ animation: 'fl-pop .2s cubic-bezier(.22,.8,.3,1) both' }}>
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#2B3445] rounded-lg hover:bg-canvas"
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-body rounded-lg hover:bg-canvas"
                   onClick={() => { setMenu(false); navigate('/profile') }}><User size={14} /> My profile</button>
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#2B3445] rounded-lg hover:bg-canvas"
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-body rounded-lg hover:bg-canvas"
                   onClick={() => { setMenu(false); navigate('/settings') }}><Clock size={14} /> Settings</button>
                 <div className="h-px bg-line my-1" />
                 <button className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#DC2626] rounded-lg hover:bg-[rgba(220,38,38,0.08)]"

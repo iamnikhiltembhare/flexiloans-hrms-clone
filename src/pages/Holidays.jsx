@@ -125,7 +125,7 @@ export default function Holidays() {
         {googleLive ? <Cloud size={15} className="mt-0.5 shrink-0 text-[#16A34A]" />
                     : <CloudOff size={15} className="mt-0.5 shrink-0 text-[#0097B2]" />}
         <div className="min-w-0">
-          <p className="text-[12px] text-[#2B3445]">
+          <p className="text-[12px] text-body">
             <strong className="text-navy">{SYNC_LABEL[sync.status] || 'Loading holidays...'}</strong>
             {googleLive
               ? ` - ${sync.items.length} entries from the public "Holidays in India" calendar.`
@@ -166,7 +166,7 @@ export default function Holidays() {
       {tab === 'Year grid' && (
         <Card title={`${HOLIDAY_YEAR} calendar`} subtitle="Click a highlighted date for details">
           <div className="flex flex-wrap gap-4 mb-4 text-[11px] text-muted">
-            <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-navy inline-block" /> Company holiday</span>
+            <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-brand inline-block" /> Company holiday</span>
             <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-cyan-bg ring-1 ring-cyan/40 inline-block" /> Optional holiday</span>
             <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-[#16A34A] inline-block" /> Applied</span>
           </div>

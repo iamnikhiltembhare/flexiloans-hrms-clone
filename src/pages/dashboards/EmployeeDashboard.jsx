@@ -87,7 +87,7 @@ export default function EmployeeDashboard() {
                 </span>
                 <span className="block text-[10px] text-muted mt-0.5">{weekdayOf(h.date)}</span>
               </span>
-              <span className="flex-1 min-w-0 text-[12px] text-[#2B3445] truncate">{h.name}</span>
+              <span className="flex-1 min-w-0 text-[12px] text-body truncate">{h.name}</span>
               {h.optional && (
                 <Link to="/holidays" className="shrink-0 text-[12px] font-medium text-cyan-ink font-medium hover:underline">Apply</Link>
               )}
@@ -104,7 +104,7 @@ export default function EmployeeDashboard() {
         <Card title="Quick Access" bodyClass="p-2">
           {quickAccess.map(({ label, to, icon: Icon }) => (
             <Link key={label} to={to}
-              className="lift flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-canvas text-[12px] text-[#2B3445]">
+              className="lift flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-canvas text-[12px] text-body">
               <Icon size={14} className="text-cyan shrink-0" />
               {label}
             </Link>
@@ -129,7 +129,7 @@ export default function EmployeeDashboard() {
           actions={<Link to="/leave" className="text-[11px] text-cyan-ink font-medium hover:underline">All</Link>}>
           {leaveBalances.slice(0, 4).map((l) => (
             <div key={l.code} className="flex items-center justify-between gap-2 py-1.5 border-b border-line/70 last:border-0">
-              <span className="text-[12px] text-[#2B3445] truncate">{l.type}</span>
+              <span className="text-[12px] text-body truncate">{l.type}</span>
               <span className="text-[12px] font-mono text-navy shrink-0">
                 {l.balance}<span className="text-faint"> / {l.granted}</span>
               </span>
@@ -164,7 +164,7 @@ export default function EmployeeDashboard() {
         </Card>
 
         <Card bodyClass="p-4">
-          <p className="flex items-start gap-2 text-[12px] text-[#2B3445]">
+          <p className="flex items-start gap-2 text-[12px] text-body">
             <PartyPopper size={15} className="text-cyan shrink-0 mt-0.5" />
             Your next work anniversary is on 4 September 2027.
           </p>

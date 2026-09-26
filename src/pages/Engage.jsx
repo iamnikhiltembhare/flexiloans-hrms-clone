@@ -21,7 +21,7 @@ function Accordion({ title, options, value, onChange }) {
       {open && (
         <div className="mt-2 space-y-1">
           {options.map((o) => (
-            <label key={o} className="flex items-center gap-2 text-[12px] text-[#2B3445] cursor-pointer py-0.5">
+            <label key={o} className="flex items-center gap-2 text-[12px] text-body cursor-pointer py-0.5">
               <input type="radio" name={title} checked={value === o} onChange={() => onChange(o)}
                 className="accent-cyan" />
               {o}
@@ -125,7 +125,7 @@ export default function Engage() {
         <Card title="Filters" bodyClass="p-3.5" className="h-fit">
           <p className="text-[12px] font-medium text-navy mb-2">Activities</p>
           {['All Activities', 'Posts'].map((a) => (
-            <label key={a} className="flex items-center gap-2 text-[12px] text-[#2B3445] cursor-pointer py-0.5">
+            <label key={a} className="flex items-center gap-2 text-[12px] text-body cursor-pointer py-0.5">
               <input type="radio" name="activity" checked={activity === a}
                 onChange={() => setActivity(a)} className="accent-cyan" />
               {a}
@@ -184,7 +184,7 @@ export default function Engage() {
                       <span className="text-[11px] text-faint whitespace-nowrap">{p.time}</span>
                     </div>
 
-                    <p className="text-[13px] text-[#2B3445] mt-2 leading-relaxed">{p.body}</p>
+                    <p className="text-[13px] text-body mt-2 leading-relaxed">{p.body}</p>
 
                     {p.highlight && (
                       <div className="mt-3 rounded-card bg-cyan-bg/60 border border-cyan/20 px-4 py-5 text-center">
@@ -215,7 +215,7 @@ export default function Engage() {
                               <p className="text-[12px] font-medium text-navy">{c.author}
                                 <span className="text-[10px] text-faint font-normal ml-2">{c.time}</span>
                               </p>
-                              <p className="text-[12px] text-[#2B3445] mt-0.5">{c.body}</p>
+                              <p className="text-[12px] text-body mt-0.5">{c.body}</p>
                             </div>
                           </div>
                         ))}

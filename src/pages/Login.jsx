@@ -46,7 +46,7 @@ export default function Login() {
   if (user) return <Navigate to="/" replace />
 
   return (
-    <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-white flex items-center justify-center px-4">
+    <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-surface flex items-center justify-center px-4">
       <TestBanner floating />
       {/* Parallax backdrop: three depth layers that track the pointer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -73,7 +73,7 @@ export default function Login() {
 
         {IS_PUBLIC_DEMO && (
           <div className="mb-5 rounded-card border-l-[3px] border-[#D97706] bg-[rgba(217,119,6,0.08)] px-3.5 py-2.5">
-            <p className="text-[12px] text-[#2B3445]">
+            <p className="text-[12px] text-body">
               <strong className="text-navy">Demonstration build.</strong> A portfolio prototype with
               fabricated data. The sign-in below is not real authentication.
             </p>
@@ -83,14 +83,14 @@ export default function Login() {
         <form onSubmit={submit} className="space-y-3">
           <div className="relative">
             <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy/50" />
-            <input className="w-full rounded-full border border-line bg-white/90 backdrop-blur pl-11 pr-4 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
+            <input className="w-full rounded-full border border-line bg-surface/90 backdrop-blur pl-11 pr-4 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
               placeholder="Your Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
           </div>
 
           <div className="relative">
             <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-navy/50" />
             <input type={show ? 'text' : 'password'}
-              className="w-full rounded-full border border-line bg-white/90 backdrop-blur pl-11 pr-11 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
+              className="w-full rounded-full border border-line bg-surface/90 backdrop-blur pl-11 pr-11 py-3 text-[13px] outline-none transition-all duration-200 focus:border-cyan focus:ring-2 focus:ring-cyan/20 focus:-translate-y-0.5 focus:shadow-[0_8px_20px_-12px_rgba(27,54,93,.4)]"
               placeholder="Your Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             <button type="button" onClick={() => setShow((v) => !v)} aria-label="Toggle password visibility"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-navy/50 hover:text-navy">
@@ -119,7 +119,7 @@ export default function Login() {
           <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">{QUICK_LOGINS.title}</p>
           {QUICK_LOGINS.list.map((a) => (
             <button key={a.username} type="button" onClick={() => fill(a.username, QUICK_LOGINS.passwords[a.username])}
-              className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-white hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
+              className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-surface hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-[12px] font-medium text-navy">{ROLES[a.role].label}</span>
                 <span className="text-[10px] font-mono text-muted">{a.username}</span>

@@ -2,25 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+/* ---------------------------------------------------------------------------
+   Theme tokens (RGB channels, consumed by tailwind.config.js)
+   Light is the default; html.dark is set by src/lib/theme.js.
+--------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --c-navy: 27 54 93;        /* headings and strong text */
+  --c-ink: 18 21 28;
+  --c-body: 43 52 69;        /* running text */
+  --c-muted: 75 85 99;
+  --c-faint: 102 112 133;
+  --c-line: 215 222 232;
+  --c-line2: 191 201 214;
+  --c-canvas: 237 241 247;   /* app background */
+  --c-surface: 255 255 255;  /* cards, bars, inputs */
+  --c-surface-2: 246 248 252;
+  --c-cyan-bg: 224 247 250;
+  --c-cyan-ink: 0 112 138;
+  --scroll-thumb: 0 114 140;
+}
+html.dark {
+  color-scheme: dark;
+  --c-navy: 228 236 247;
+  --c-ink: 234 239 246;
+  --c-body: 200 211 226;
+  --c-muted: 160 173 192;
+  --c-faint: 131 146 168;
+  --c-line: 37 52 76;
+  --c-line2: 54 73 102;
+  --c-canvas: 9 15 27;
+  --c-surface: 17 27 45;
+  --c-surface-2: 22 35 56;
+  --c-cyan-bg: 11 55 70;
+  --c-cyan-ink: 94 216 240;
+  --scroll-thumb: 94 216 240;
+}
+
 html, body, #root { height: 100%; }
-body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: rgb(var(--c-canvas)); color: rgb(var(--c-ink)); transition: background-color .25s ease; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
 
 @layer components {
-  .card { @apply bg-white border border-line rounded-card shadow-card; }
+  .card { @apply bg-surface border border-line rounded-card shadow-card; }
   .card-head { @apply border-b-2 border-line; }
   .btn { @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors; }
   .btn-primary { @apply btn bg-cyan-btn text-white shadow-sm hover:bg-cyan-btnHover hover:shadow-md; }
-  .btn-secondary { @apply btn bg-white text-navy border border-line2 font-semibold hover:bg-canvas hover:border-navy/40; }
+  .btn-secondary { @apply btn bg-surface text-navy border border-line2 font-semibold hover:bg-canvas hover:border-navy/40; }
   .btn-ghost { @apply btn bg-transparent text-muted border border-line hover:bg-canvas hover:text-navy; }
   .btn-danger { @apply btn bg-[#DC2626] text-white hover:bg-[#B91C1C]; }
-  .input { @apply w-full rounded-lg border border-line2 bg-white px-3 py-2 text-[13px] text-ink placeholder:text-faint outline-none transition-shadow focus:border-cyan focus:ring-2 focus:ring-cyan/30; }
+  .input { @apply w-full rounded-lg border border-line2 bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-faint outline-none transition-shadow focus:border-cyan focus:ring-2 focus:ring-cyan/30; }
   .label { @apply block text-[11px] font-semibold uppercase tracking-wide text-muted mb-1.5; }
   .h1 { @apply text-[22px] font-bold tracking-[-0.01em] text-navy; }
   .h2 { @apply text-[15px] font-bold text-navy; }
   .h3 { @apply text-[13px] font-semibold text-navy; }
-  .th { @apply bg-navy text-white text-[10px] uppercase tracking-[0.07em] font-bold text-left px-3 py-3; }
-  .td { @apply px-3 py-2.5 text-[13px] text-[#2B3445] border-b border-line; }
+  .th { @apply bg-brand text-white text-[10px] uppercase tracking-[0.07em] font-bold text-left px-3 py-3; }
+  .td { @apply px-3 py-2.5 text-[13px] text-body border-b border-line; }
 }
 
 
@@ -144,9 +180,72 @@ body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -appl
   border-radius: 4px;
 }
 
-::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-thumb { background: #9fb0c6; border-radius: 99px; }
+/* Scrollbars: slim, rounded, in the brand cyan (brighter in dark mode).
+   The thumb is inset by a transparent border so it floats off the edge. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--scroll-thumb) / .38);
+  border: 3px solid transparent; background-clip: padding-box; border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgb(var(--scroll-thumb) / .7); }
+::-webkit-scrollbar-thumb:active { background-color: rgb(var(--scroll-thumb) / .9); }
+::-webkit-scrollbar-corner { background: transparent; }
+.sidebar ::-webkit-scrollbar-thumb { background-color: rgb(255 255 255 / .22); }
+.sidebar ::-webkit-scrollbar-thumb:hover { background-color: rgb(255 255 255 / .4); }
+/* Firefox has no ::-webkit-scrollbar; give it the same colours. */
+@supports (-moz-appearance: none) {
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--scroll-thumb) / .45) transparent; }
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode for colours that are fixed in the markup
+   Status tints (badges, stat tiles, approve/reject buttons) are light pastels
+   with dark text; in dark mode they become translucent tints with light text.
+   Charts get lighter strokes and fills (CSS beats SVG presentation attributes).
+--------------------------------------------------------------------------- */
+html.dark .bg-\[\#DCFCE7\] { background-color: rgb(34 197 94 / .16); }
+html.dark .bg-\[\#FEE2E2\] { background-color: rgb(239 68 68 / .16); }
+html.dark .bg-\[\#FEF3C7\] { background-color: rgb(245 158 11 / .16); }
+html.dark .bg-\[\#EDE9FE\] { background-color: rgb(139 92 246 / .2); }
+html.dark .bg-\[\#DBEAFE\] { background-color: rgb(59 130 246 / .2); }
+html.dark .bg-\[\#CFF3FA\] { background-color: rgb(0 180 216 / .18); }
+html.dark .hover\:bg-\[\#BBF7D0\]:hover { background-color: rgb(34 197 94 / .26); }
+html.dark .hover\:bg-\[\#FECACA\]:hover { background-color: rgb(239 68 68 / .26); }
+html.dark .hover\:bg-\[\#DFF4FA\]:hover { background-color: rgb(0 180 216 / .12); }
+html.dark .text-\[\#15803D\], html.dark .text-\[\#16A34A\] { color: #4ADE80; }
+html.dark .text-\[\#B91C1C\], html.dark .text-\[\#DC2626\] { color: #F87171; }
+html.dark .text-\[\#B45309\], html.dark .text-\[\#D97706\] { color: #FBBF24; }
+html.dark .text-\[\#6D28D9\], html.dark .text-\[\#7C3AED\] { color: #A78BFA; }
+html.dark .text-\[\#1D4ED8\] { color: #60A5FA; }
+html.dark .text-\[\#00647B\], html.dark .text-\[\#0097B2\] { color: #5ED8F0; }
+html.dark .ring-\[\#15803D\]\/25, html.dark .ring-\[\#15803D\]\/20 { --tw-ring-color: rgb(74 222 128 / .3); }
+html.dark .ring-\[\#B91C1C\]\/25, html.dark .ring-\[\#B91C1C\]\/20 { --tw-ring-color: rgb(248 113 113 / .3); }
+
+html.dark [fill="#1B365D"] { fill: #7EA6E0; }
+html.dark [stroke="#1B365D"] { stroke: #7EA6E0; }
+html.dark [stroke="#E5E7EB"], html.dark [stroke="#CBD5E1"] { stroke: rgb(var(--c-line)); }
+html.dark [fill="#E5E7EB"] { fill: rgb(var(--c-line2)); }
+html.dark text[fill="#6B7280"], html.dark text[fill="#9CA3AF"] { fill: rgb(var(--c-muted)); }
+html.dark .recharts-default-tooltip {
+  background: rgb(var(--c-surface)) !important; border-color: rgb(var(--c-line2)) !important; color: rgb(var(--c-ink));
+}
+html.dark .recharts-tooltip-cursor { fill: rgb(255 255 255 / .05); }
+
+/* Sign-in backdrop: dim the pastel blobs and waves. */
+html.dark .scene { background: rgb(var(--c-canvas)); }
+html.dark .scene .blur-3xl { opacity: .1 !important; }
+html.dark .scene path[fill="#E8EDF7"] { fill: #0E1829; }
+html.dark .scene path[fill="#DDE6F5"] { fill: #111F35; }
+html.dark .scene path[fill="#CBD9EF"] { fill: #152643; }
+
+/* Smooth theme switch (class added briefly by lib/theme.js). */
+html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+  transition: background-color .3s ease, border-color .3s ease, color .3s ease, fill .3s ease, stroke .3s ease !important;
+}
+
+/* Shadows read as smudges on dark surfaces; use a deeper, softer one. */
+html.dark .shadow-card, html.dark .card { box-shadow: 0 1px 2px rgb(0 0 0 / .35), 0 8px 20px -10px rgb(0 0 0 / .6); }
 
 /* ---------------------------------------------------------------------------
    Phones and the Android app
@@ -198,6 +297,41 @@ body { margin: 0; background: #EDF1F7; color: #12151C; font-family: Inter, -appl
   .modal-foot > .btn, .modal-foot > button { flex: 1; justify-content: center; }
   .h1 { font-size: 20px; }
 }
+
+/* Phone main menu (components/MobileMenu.jsx) */
+.menu-sheet {
+  max-height: 90dvh;
+  padding-bottom: var(--safe-bottom);
+  box-shadow: 0 -12px 40px -12px rgb(0 0 0 / .35);
+  animation: fl-sheet-up .38s cubic-bezier(.22,.8,.3,1) both;
+}
+.menu-hero {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgb(0 180 216 / .55) 0%, transparent 55%),
+    radial-gradient(90% 120% at 0% 100%, rgb(124 58 237 / .35) 0%, transparent 60%),
+    linear-gradient(135deg, #1B365D 0%, #16294a 60%, #0f1e36 100%);
+  box-shadow: 0 14px 30px -18px rgb(27 54 93 / .9);
+}
+.menu-title { @apply px-1 mb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-faint; }
+.menu-tile {
+  @apply relative flex flex-col items-center gap-1.5 rounded-2xl px-1 pt-3 pb-2.5 text-center transition-transform duration-150;
+  animation: fl-rise .35s cubic-bezier(.22,.8,.3,1) both;
+}
+.menu-tile:active { transform: scale(.94); }
+.menu-tile-icon {
+  @apply flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 13%, transparent);
+}
+.menu-tile-label { @apply text-[11px] font-medium leading-tight text-body; }
+.menu-tile.is-active { background: color-mix(in srgb, var(--tint) 9%, transparent); }
+.menu-tile.is-active .menu-tile-icon { color: #FFFFFF; background: var(--tint); box-shadow: 0 8px 18px -8px var(--tint); }
+.menu-tile.is-active .menu-tile-label { @apply font-bold text-navy; }
+html.dark .menu-tile-icon {
+  color: color-mix(in srgb, var(--tint) 60%, white);
+  background: color-mix(in srgb, var(--tint) 24%, transparent);
+}
+html.dark .menu-tile.is-active .menu-tile-icon { color: #FFFFFF; background: var(--tint); }
 
 /* Inside the app: no tap flash, no rubber-band page, no accidental text selection. */
 html.native { -webkit-tap-highlight-color: transparent; }

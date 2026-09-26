@@ -50,11 +50,11 @@ export default function DocumentCenter() {
 
       {/* Hero */}
       <Card className="mb-4" bodyClass="p-0">
-        <div className="flex items-center gap-6 px-6 py-5 bg-[linear-gradient(100deg,#E0F7FA_0%,#F5F7FA_60%)]">
+        <div className="flex items-center gap-6 px-6 py-5 bg-[linear-gradient(100deg,rgb(var(--c-cyan-bg))_0%,rgb(var(--c-surface-2))_60%)]">
           <div className="min-w-0 flex-1">
             <h2 className="text-[17px] font-semibold text-navy">We've got it sorted for you!</h2>
-            <p className="text-[13px] text-[#2B3445] mt-1.5">All documents are now in one place.</p>
-            <p className="text-[13px] text-[#2B3445]">
+            <p className="text-[13px] text-body mt-1.5">All documents are now in one place.</p>
+            <p className="text-[13px] text-body">
               You can request a new letter if you don't find the one you were looking for.
             </p>
           </div>
