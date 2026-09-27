@@ -147,6 +147,12 @@ export function DataProvider({ children }) {
 
   const punchToggle = useCallback(() => dispatch('punch.toggle', { now: clockTime(), date: localDate() }), [dispatch])
 
+  const addRegularisation = useCallback((r) => dispatch('regularisation.add', { request: {
+    id: nextSerial(stateRef.current.regularisations, 'RG-', 1000),
+    empId: user?.id, employee: me, status: 'Pending', appliedOn: today(), ...r,
+  } }), [dispatch, me, user])
+  const decideRegularisation = useCallback((id, status) => dispatch('regularisation.decide', { id, status, by: me }), [dispatch, me])
+
   // --- user administration (super admin) ---------------------------------
   // Server mode asks the API; the offline demo keeps created users in this
   // browser. Both add the person to the People directory.
@@ -194,11 +200,11 @@ export function DataProvider({ children }) {
     addAnnouncement, addDocument, advanceCandidate, addRequisition,
     notify, markRead, markAllRead, clearNotifications,
     unread: state.notifications.filter((n) => !n.read).length,
-    toast, punchToggle, resetData, listUsers, createUser,
+    toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
     ready, loadError, refresh, online: API_MODE,
   }), [state, addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
     addAnnouncement, addDocument, advanceCandidate, addRequisition, notify, markRead,
-    markAllRead, clearNotifications, toast, punchToggle, resetData, listUsers, createUser, ready, loadError, refresh])
+    markAllRead, clearNotifications, toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser, ready, loadError, refresh])
 
   return (
     <DataContext.Provider value={value}>

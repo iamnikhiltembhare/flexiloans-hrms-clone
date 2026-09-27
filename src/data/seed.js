@@ -15,6 +15,12 @@ export const SEED_NOTIFICATIONS = [
   { id: 'n6', title: 'Address proof pending verification', detail: 'HR Ops will review it within 2 working days', time: '3 days ago', to: '/documents', kind: 'info', read: true },
 ]
 
+const person = (id) => employees.find((e) => e.id === id)
+const SEED_REGULARISATIONS = [
+  { id: 'RG-1002', empId: 'FL1015', date: '2026-09-22', in: '09:55', out: '19:10', type: 'Missed punch', reason: 'Biometric reader at the Pune office was down in the morning', status: 'Pending', appliedOn: '2026-09-23' },
+  { id: 'RG-1001', empId: 'FL1009', date: '2026-09-10', in: '09:48', out: '19:05', type: 'On duty / client visit', reason: 'Client workshop at the Andheri branch, no punch machine on site', status: 'Approved', appliedOn: '2026-09-11', decidedBy: 'Aarti Deshmukh' },
+].map((r) => ({ ...r, employee: person(r.empId).name }))
+
 export const SEED = {
   employees,
   leaveRequests,
@@ -22,6 +28,7 @@ export const SEED = {
   announcements,
   candidates,
   requisitions: openings,
+  regularisations: SEED_REGULARISATIONS,
   documents,
   notifications: SEED_NOTIFICATIONS,
   punch: { inAt: '09:34 AM', outAt: null },

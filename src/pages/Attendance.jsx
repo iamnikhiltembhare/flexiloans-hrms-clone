@@ -1,23 +1,28 @@
 import { useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { Clock, CheckCircle2, XCircle, Home, Download, CalendarPlus } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Home, Download, CalendarPlus, Check, X } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, statusTone } from '../components/ui.jsx'
-import Modal from '../components/Modal.jsx'
+import RegulariseModal from '../components/RegulariseModal.jsx'
 import AttendanceInfo from './AttendanceInfo.jsx'
 import { attendanceLog, attendanceSummary, attendanceTrend } from '../data/mock.js'
 import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
-
-const BLANK = { date: '', checkIn: '', checkOut: '', reason: '' }
+import { useAuth } from '../context/AuthContext.jsx'
+import { PERMS } from '../data/accounts.js'
+import { localDate } from '../lib/actions.js'
 
 export default function Attendance() {
-  const { toast, notify } = useApp()
+  const { toast, regularisations } = useApp()
+  const { user, can } = useAuth()
   const [tab, setTab] = useState('Attendance info')
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState(BLANK)
-  const [err, setErr] = useState('')
+  // Regularisation form: opened from the header button or any calendar day.
+  const [reg, setReg] = useState(null)
+  const openReg = (prefill) => setReg({ ...prefill, opened: Date.now() })
+  const approver = can(PERMS.HR_PEOPLE)
+  const waiting = regularisations.filter((r) => r.status === 'Pending' && r.empId !== user?.id).length
+  const regTab = approver && waiting ? 'Regularisations (' + waiting + ')' : 'Regularisations'
 
   const exportLog = () => {
     downloadCSV('flexiloans-attendance-sep-2026.csv', [
@@ -28,15 +33,6 @@ export default function Attendance() {
     toast('Export ready', attendanceLog.length + ' attendance rows exported to CSV')
   }
 
-  const submitReg = (e) => {
-    e.preventDefault()
-    if (!form.date) { setErr('Pick the date you want regularised.'); return }
-    notify({ title: 'Regularisation submitted', detail: form.date + ' sent to Aarti Deshmukh', to: '/attendance', kind: 'task' })
-    toast('Regularisation submitted', form.date + ' is pending manager approval')
-    setForm(BLANK); setErr(''); setOpen(false)
-  }
-
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const hoursData = attendanceLog
     .filter((d) => d.hours !== '--')
@@ -51,20 +47,25 @@ export default function Attendance() {
         subtitle="September 2026 - 22 working days"
         actions={<>
           <button className="btn-secondary" onClick={exportLog}><Download size={13} /> Export</button>
-          <button className="btn-primary" onClick={() => setOpen(true)}><CalendarPlus size={13} /> Regularise</button>
+          <button className="btn-primary" onClick={() => openReg({ date: localDate() })}><CalendarPlus size={13} /> Regularise</button>
         </>}
       />
 
-      {tab !== 'Attendance info' && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
+      {tab !== 'Attendance info' && !tab.startsWith('Regularisations') && <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Present" value={attendanceSummary.present} hint="days this month" icon={CheckCircle2} tone="green" />
         <StatCard label="Absent" value={attendanceSummary.absent} hint="1 unapproved" icon={XCircle} tone="red" />
         <StatCard label="Work from home" value={attendanceSummary.wfh} hint="within policy limit of 8" icon={Home} tone="blue" />
         <StatCard label="Average hours" value={attendanceSummary.avgHours} hint={attendanceSummary.lateMarks + ' late marks'} icon={Clock} tone="cyan" />
       </div>}
 
-      <Tabs tabs={['Attendance info', 'My attendance', 'Team view', 'Holiday calendar']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Attendance info', regTab, 'My attendance', 'Team view', 'Holiday calendar']}
+        active={tab.startsWith('Regularisations') ? regTab : tab} onChange={setTab} />
 
-      {tab === 'Attendance info' && <AttendanceInfo />}
+      {tab === 'Attendance info' && (
+        <AttendanceInfo onRegularise={(day) => openReg({ date: day.date, recordedIn: day.firstIn, recordedOut: day.lastOut })} />
+      )}
+
+      {tab.startsWith('Regularisations') && <Regularisations />}
 
       {tab === 'My attendance' && (
         <div className="grid gap-4 lg:grid-cols-3">
@@ -132,19 +133,64 @@ export default function Attendance() {
         </Card>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Regularise attendance" subtitle="For a missed punch or an incorrect entry"
-        footer={<>
-          <button className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="btn-primary" onClick={submitReg}>Submit</button>
-        </>}>
-        <form onSubmit={submitReg} className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2"><label className="label">Date *</label><input type="date" className="input" value={form.date} onChange={set('date')} /></div>
-          <div><label className="label">Check in</label><input type="time" className="input" value={form.checkIn} onChange={set('checkIn')} /></div>
-          <div><label className="label">Check out</label><input type="time" className="input" value={form.checkOut} onChange={set('checkOut')} /></div>
-          <div className="sm:col-span-2"><label className="label">Reason</label><textarea className="input min-h-[80px]" value={form.reason} onChange={set('reason')} placeholder="Client visit, network issue, forgot to punch out..." /></div>
-          {err && <p className="sm:col-span-2 text-[12px] text-[#DC2626]">{err}</p>}
-        </form>
-      </Modal>
+      <RegulariseModal prefill={reg} onClose={() => setReg(null)} />
     </>
+  )
+}
+
+// Requests to correct a day's attendance. Employees see their own; HR sees
+// everyone's and approves or rejects other people's pending requests.
+function Regularisations() {
+  const { regularisations, decideRegularisation, toast } = useApp()
+  const { user, can } = useAuth()
+  const approver = can(PERMS.HR_PEOPLE)
+  const pending = regularisations.filter((r) => r.status === 'Pending' && r.empId !== user?.id)
+  const mine = regularisations.filter((r) => r.empId === user?.id)
+
+  const decide = (r, status) => {
+    decideRegularisation(r.id, status)
+    toast('Regularisation ' + status.toLowerCase(), r.employee + ' - ' + r.date, status === 'Approved' ? 'success' : 'warning')
+  }
+
+  const cols = (withEmployee, withActions) => [
+    { key: 'id', header: 'Request', mono: true },
+    ...(withEmployee ? [{ key: 'employee', header: 'Employee', render: (r) => (
+      <span><span className="block text-[13px] text-navy font-medium">{r.employee}</span><span className="block text-[11px] text-muted font-mono">{r.empId}</span></span>
+    ) }] : []),
+    { key: 'date', header: 'Date', mono: true },
+    { key: 'type', header: 'Type' },
+    { key: 'in', header: 'Punch in', mono: true, render: (r) => r.in || '--' },
+    { key: 'out', header: 'Punch out', mono: true, render: (r) => r.out || '--' },
+    { key: 'reason', header: 'Reason', render: (r) => <span className="block max-w-[18rem] whitespace-normal text-[12.5px]">{r.reason}</span> },
+    { key: 'status', header: 'Status', render: (r) => (
+      <span className="flex flex-col items-start gap-0.5">
+        <Badge tone={statusTone(r.status)}>{r.status}</Badge>
+        {r.decidedBy && <span className="text-[10px] text-faint">by {r.decidedBy}</span>}
+      </span>
+    ) },
+    ...(withActions ? [{ key: 'action', header: '', align: 'right', render: (r) => (
+      <span className="flex gap-1.5 justify-end">
+        <button className="btn bg-[#DCFCE7] text-[#15803D] ring-1 ring-[#15803D]/25 hover:bg-[#BBF7D0] px-2 py-1" onClick={() => decide(r, 'Approved')}><Check size={12} /> Approve</button>
+        <button className="btn bg-[#FEE2E2] text-[#B91C1C] ring-1 ring-[#B91C1C]/25 hover:bg-[#FECACA] px-2 py-1" onClick={() => decide(r, 'Rejected')}><X size={12} /> Reject</button>
+      </span>
+    ) }] : []),
+  ]
+
+  return (
+    <div className="grid gap-4">
+      {approver && (
+        <Card title="Pending my approval" subtitle="Approved times replace what was punched on the employee's calendar" bodyClass="p-0">
+          <Table columns={cols(true, true)} rows={pending} empty="Nothing waiting for approval." />
+        </Card>
+      )}
+      <Card title="My requests" subtitle="Click any date on the Attendance info calendar to raise one" bodyClass="p-0">
+        <Table columns={cols(false, false)} rows={mine} empty="You have not asked to regularise any day yet." />
+      </Card>
+      {approver && (
+        <Card title="All requests" bodyClass="p-0">
+          <Table columns={cols(true, false)} rows={regularisations} />
+        </Card>
+      )}
+    </div>
   )
 }

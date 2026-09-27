@@ -3,7 +3,7 @@
 // authoritative (who raised it, its status, the date) is set by the server.
 
 import { PERMS } from '../src/data/accounts.js'
-import { CANDIDATE_STAGES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
+import { CANDIDATE_STAGES, REGULARISATION_TYPES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
 
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status }
@@ -145,6 +145,34 @@ export function prepare(type, payload, actor, current) {
       return { now, date }
     }
 
+    case 'regularisation.add': {
+      const r = p.request || {}
+      const date = isoDate(r.date, 'Date')
+      const age = (Date.now() - Date.parse(date)) / 86400000
+      if (age < -1) bad('You cannot regularise a day that has not happened yet')
+      if (age > 62) bad('Regularisation is only open for the last 60 days')
+      const time = (v, field) => (v === '' || v == null ? null : /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : bad(field + ' must be a time like 09:30'))
+      const inT = time(r.in, 'Punch-in')
+      const outT = time(r.out, 'Punch-out')
+      if (!inT && !outT) bad('Enter the punch-in time, the punch-out time, or both')
+      if (inT && outT && outT <= inT) bad('Punch-out must be after punch-in')
+      if (current.some((x) => x.empId === actor.id && x.date === date && x.status === 'Pending')) bad('You already have a pending request for ' + date)
+      return { request: {
+        id: uniqueId(current, r.id, /^RG-\d+$/, 'RG-', 1000),
+        empId: actor.id, employee: actor.name, date, in: inT, out: outT,
+        type: oneOf(r.type, REGULARISATION_TYPES, REGULARISATION_TYPES[0]),
+        reason: required(r.reason, 'Reason', 300),
+        status: 'Pending', appliedOn: today(),
+      } }
+    }
+
+    case 'regularisation.decide': {
+      const target = find(current, p.id, 'Regularisation request')
+      if (target.empId === actor.id) forbidden('You cannot approve your own regularisation')
+      if (target.status !== 'Pending') bad(target.id + ' is already ' + target.status.toLowerCase())
+      return { id: target.id, status: oneOf(p.status, ['Approved', 'Rejected']) || bad('Status must be Approved or Rejected'), by: actor.name }
+    }
+
     case 'notification.add': {
       const n = p.notification || {}
       return { notification: notificationFor(n) }
@@ -179,7 +207,8 @@ export function notificationFor(n) {
 export function visibleTo(actor, collection, value) {
   const can = (perm) => actor.perms.includes(perm)
   switch (collection) {
-    case 'leaveRequests': return can(PERMS.HR_PEOPLE) ? value : value.filter((r) => r.empId === actor.id)
+    case 'leaveRequests':
+    case 'regularisations': return can(PERMS.HR_PEOPLE) ? value : value.filter((r) => r.empId === actor.id)
     case 'tickets': return can(PERMS.HR_DESK) ? value : value.filter((t) => t.raisedById === actor.id || t.raisedBy === actor.name)
     case 'candidates':
     case 'requisitions': return can(PERMS.HR_HIRING) ? value : []
@@ -209,6 +238,14 @@ export function fanOut(type, payload, actor, before) {
     case 'ticket.setStatus': {
       const t = before.find((x) => x.id === payload.id)
       return [{ to: (u) => u.id === t.raisedById && u.username !== actor.username, notification: { title: t.id + ' is now ' + payload.status, detail: t.subject, to: '/', kind: 'info' } }]
+    }
+    case 'regularisation.add': {
+      const r = payload.request
+      return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: 'Regularisation request from ' + r.employee, detail: r.type + ' on ' + r.date, to: '/attendance', kind: 'task' } }]
+    }
+    case 'regularisation.decide': {
+      const r = before.find((x) => x.id === payload.id)
+      return [{ to: (u) => u.id === r.empId, notification: { title: 'Regularisation ' + payload.status.toLowerCase(), detail: r.date + ' - ' + r.type + ', by ' + actor.name, to: '/attendance', kind: payload.status === 'Approved' ? 'info' : 'alert' } }]
     }
     case 'announcement.add': {
       const a = payload.announcement

@@ -19,6 +19,9 @@ export const TICKET_DESKS = {
   IT: { desk: 'IT Helpdesk', team: 'IT' },
   Finance: { desk: 'Finance Desk', team: 'Finance' },
 }
+// Reasons an employee can give for correcting a day's attendance.
+export const REGULARISATION_TYPES = ['Missed punch', 'Wrong punch time', 'Work from home', 'On duty / client visit']
+
 export const TICKET_STATUSES = ['Open', 'In Progress', 'Approved', 'Rejected', 'Resolved']
 /** True when a ticket's category belongs to a department other than HR. */
 export const needsAdminApproval = (category) => (TICKET_DESKS[category]?.team || 'HR') !== 'HR'
@@ -34,6 +37,7 @@ export const COLLECTIONS = {
   announcements: 'shared',
   candidates: 'shared',
   requisitions: 'shared',
+  regularisations: 'shared',
   documents: 'personal',
   notifications: 'personal',
   punch: 'personal',
@@ -50,6 +54,8 @@ export const ACTIONS = {
   'candidate.advance': { collection: 'candidates', perm: PERMS.HR_HIRING },
   'requisition.add': { collection: 'requisitions', perm: PERMS.HR_HIRING },
   'punch.toggle': { collection: 'punch', perm: PERMS.SELF },
+  'regularisation.add': { collection: 'regularisations', perm: PERMS.SELF },
+  'regularisation.decide': { collection: 'regularisations', perm: PERMS.HR_PEOPLE },
   'notification.add': { collection: 'notifications', perm: PERMS.SELF },
   'notification.read': { collection: 'notifications', perm: PERMS.SELF },
   'notification.readAll': { collection: 'notifications', perm: PERMS.SELF },
@@ -105,6 +111,11 @@ const REDUCERS = {
     history[date] = { in: day.in || p.inAt, out: now }
     return { value: { ...p, outAt: now, date, history }, result: { action: 'out', now } }
   },
+
+  'regularisation.add': (list, { request }) => ({ value: [request, ...list], result: request.id }),
+  'regularisation.decide': (list, { id, status, by }) => ({
+    value: list.map((r) => (r.id === id ? { ...r, status, decidedBy: by } : r)),
+  }),
 
   'notification.add': (list, { notification }) => ({ value: [notification, ...list] }),
   'notification.read': (list, { id }) => ({ value: list.map((n) => (n.id === id ? { ...n, read: true } : n)) }),

@@ -331,3 +331,43 @@ test('users created by an admin survive the code account sync', async () => {
   assert.equal(r.status, 200)
   assert.ok(await tok(v1))
 })
+
+// --- attendance regularisation ----------------------------------------------
+
+test('regularisation: employee requests, HR is notified and approves, employee is notified', async () => {
+  const { call, login, act } = setup()
+  const emp = await login(...EMP)
+  const hr = await login(...HR)
+  const day = localDate(new Date(Date.now() - 2 * 86400000))
+  const req = { date: day, in: '09:45', out: '19:05', type: 'Missed punch', reason: 'Card reader was down', empId: 'FL0001', status: 'Approved' }
+
+  const made = await act(emp, 'regularisation.add', { request: req })
+  assert.equal(made.status, 200)
+  const mine = made.data.state.regularisations.find((r) => r.id === made.data.result)
+  assert.equal(mine.empId, 'FL1009', 'server sets the employee')
+  assert.equal(mine.status, 'Pending', 'server ignores a spoofed status')
+  assert.equal((await act(emp, 'regularisation.add', { request: req })).status, 400, 'one pending request per day')
+
+  const hrState = (await call('GET', '/api/state', { token: hr })).data
+  assert.match(hrState.notifications[0].title, /Regularisation request from Nikhil Tembhare/)
+  assert.equal((await act(emp, 'regularisation.decide', { id: mine.id, status: 'Approved' })).status, 403, 'employees cannot approve')
+  assert.equal((await act(hr, 'regularisation.decide', { id: mine.id, status: 'Approved' })).status, 200)
+
+  const empState = (await call('GET', '/api/state', { token: emp })).data
+  assert.equal(empState.regularisations.find((r) => r.id === mine.id).status, 'Approved')
+  assert.ok(empState.regularisations.every((r) => r.empId === 'FL1009'), 'employees see only their own')
+  assert.match(empState.notifications[0].title, /Regularisation approved/)
+})
+
+test('regularisation input is validated', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const day = localDate(new Date(Date.now() - 86400000))
+  const add = (r) => act(emp, 'regularisation.add', { request: { date: day, reason: 'x', ...r } })
+  assert.equal((await add({ in: '', out: '' })).status, 400, 'needs a time')
+  assert.equal((await add({ in: '19:00', out: '09:00' })).status, 400, 'out after in')
+  assert.equal((await add({ in: '9am' })).status, 400, 'time format')
+  assert.equal((await add({ in: '09:30', reason: '  ' })).status, 400, 'reason required')
+  assert.equal((await add({ in: '09:30', date: localDate(new Date(Date.now() + 5 * 86400000)) })).status, 400, 'no future days')
+  assert.equal((await add({ in: '09:30', date: '2026-01-01' })).status, 400, 'older than 60 days')
+})

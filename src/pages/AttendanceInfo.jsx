@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, LayoutGrid, List, Clock, Timer, AlertTriangle, LogIn, LogOut, CalendarCheck } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Clock, Timer, AlertTriangle, LogIn, LogOut, CalendarCheck, PencilLine } from 'lucide-react'
 import { Card, StatCard, Badge, Table } from '../components/ui.jsx'
 import { buildMonth, monthSummary, SHIFT, SHIFT_START, SHIFT_END } from '../data/attendance.js'
 import { companyHolidays, MONTHS, WEEKDAYS } from '../data/holidays.js'
 import { useApp } from '../context/DataContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { localDate, isPunchedIn } from '../lib/actions.js'
 
 // Each calendar day shows the first punch-in and the last punch-out, with a
 // bar for the time worked against the shift. Today uses the real punches
-// from the top bar's Punch in / Punch out button.
+// from the top bar's Punch in / Punch out button. Clicking a date or its
+// punch times opens the regularisation form for that day; approved
+// regularisations replace what was punched.
 
 const STATUS_STYLE = {
   P: 'bg-[rgba(22,163,74,0.12)] text-[#16A34A]',
@@ -43,28 +46,42 @@ function TimeBar({ r, tall = false }) {
   )
 }
 
-function DayCell({ r, active, onPick }) {
+const REG_CHIP = {
+  Pending: 'bg-[rgba(217,119,6,0.14)] text-[#B45309]',
+  Approved: 'bg-[rgba(22,163,74,0.14)] text-[#15803D]',
+  Rejected: 'bg-[rgba(220,38,38,0.12)] text-[#B91C1C]',
+}
+
+// The cell selects the day; its date and punch times are their own buttons
+// that open the regularisation form (future days cannot be regularised).
+function DayCell({ r, active, reg, onPick, onRegularise }) {
   const present = r.status === 'P'
+  const canFix = !r.future
+  const fix = (e) => { e.stopPropagation(); onPick(r.date); onRegularise(r) }
   return (
-    <button onClick={() => onPick(r.date)}
-      className={'att-cell relative min-h-[4.25rem] sm:min-h-[6.25rem] rounded-lg border p-1 sm:p-1.5 text-left transition-all duration-150 hover:border-cyan flex flex-col ' +
+    <div role="button" tabIndex={0} onClick={() => onPick(r.date)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(r.date) } }}
+      className={'att-cell group relative min-h-[4.25rem] sm:min-h-[6.25rem] rounded-lg border p-1 sm:p-1.5 text-left transition-all duration-150 hover:border-cyan flex flex-col cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-cyan ' +
         (active ? 'border-cyan ring-2 ring-cyan/30 ' : 'border-line ') +
         (r.isToday ? 'shadow-[inset_0_0_0_1.5px_rgb(0_180_216/.55)] ' : '') +
         (CELL_TINT[r.status] || 'bg-surface')}
-      aria-label={r.date + ' ' + (r.label || '') + (present ? ', in ' + r.firstIn + (r.lastOut ? ', out ' + r.lastOut : '') : '')}>
+      aria-label={r.date + ' ' + (r.label || '') + (present ? ', in ' + r.firstIn + (r.lastOut ? ', out ' + r.lastOut : '') : '') + (reg ? ', regularisation ' + reg.status.toLowerCase() : '')}>
       <span className="flex items-start justify-between gap-1">
-        <span className={'text-[11px] sm:text-[12px] font-semibold ' + (r.isToday ? 'text-cyan-ink' : 'text-navy')}>
+        <button type="button" disabled={!canFix} onClick={fix} title={canFix ? 'Regularise ' + r.date : undefined}
+          className={'reg-date -m-0.5 flex items-center gap-1 rounded px-0.5 text-[11px] sm:text-[12px] font-semibold ' +
+            (r.isToday ? 'text-cyan-ink ' : 'text-navy ') + (canFix ? 'hover:bg-cyan-bg hover:text-cyan-ink' : 'cursor-default')}>
           {String(r.day).padStart(2, '0')}
-        </span>
-        {r.isToday && <span className="hidden sm:inline rounded-full bg-cyan px-1.5 text-[8.5px] font-bold uppercase tracking-wide text-white">Today</span>}
-        {!r.isToday && r.status && r.status !== 'P' && (
-          <span className={'rounded px-1 text-[8.5px] font-semibold ' + (STATUS_STYLE[r.status] || '')}>{r.status}</span>
-        )}
-        {present && r.late && !r.isToday && <span className="hidden sm:inline rounded px-1 text-[8.5px] font-semibold bg-[rgba(217,119,6,0.14)] text-[#B45309]">Late</span>}
+          {canFix && <PencilLine size={10} className="hidden sm:inline opacity-0 group-hover:opacity-70 transition-opacity" />}
+        </button>
+        {reg ? <span className={'rounded px-1 text-[8.5px] font-semibold ' + REG_CHIP[reg.status]} title={reg.id + ' ' + reg.status}>{reg.status === 'Approved' ? 'Fixed' : reg.status === 'Pending' ? 'Req' : 'Rej'}</span>
+          : r.isToday ? <span className="hidden sm:inline rounded-full bg-cyan px-1.5 text-[8.5px] font-bold uppercase tracking-wide text-white">Today</span>
+            : r.status && r.status !== 'P' ? <span className={'rounded px-1 text-[8.5px] font-semibold ' + (STATUS_STYLE[r.status] || '')}>{r.status}</span>
+              : present && r.late ? <span className="hidden sm:inline rounded px-1 text-[8.5px] font-semibold bg-[rgba(217,119,6,0.14)] text-[#B45309]">Late</span> : null}
       </span>
 
       {present ? (
-        <span className="mt-auto block space-y-0.5 sm:space-y-1">
+        <button type="button" onClick={fix} title="Regularise these punch times"
+          className="reg-times mt-auto -mx-0.5 block rounded px-0.5 py-0.5 space-y-0.5 sm:space-y-1 text-left hover:bg-cyan-bg/70">
           <span className="flex items-center gap-1 font-mono text-[9.5px] sm:text-[11px] leading-none">
             <span className={'h-1.5 w-1.5 shrink-0 rounded-full ' + (r.late ? 'bg-[#D97706]' : 'bg-[#16A34A]')} />
             <span className={r.late ? 'text-[#B45309]' : 'text-body'}>{r.firstIn}</span>
@@ -74,11 +91,15 @@ function DayCell({ r, active, onPick }) {
             <span className={r.working ? 'text-cyan-ink' : 'text-body'}>{r.working ? 'now' : r.lastOut}</span>
           </span>
           <span className="hidden sm:block pt-0.5"><TimeBar r={r} /></span>
-        </span>
+        </button>
+      ) : canFix && (r.status === 'A' || r.status === '') ? (
+        <button type="button" onClick={fix} className="reg-times mt-auto hidden sm:block rounded px-0.5 text-left text-[9.5px] text-cyan-ink font-medium hover:bg-cyan-bg/70">
+          {r.label ? r.label + ' - fix' : 'Add punches'}
+        </button>
       ) : (
         <span className="mt-auto hidden sm:block text-[9.5px] text-muted leading-tight">{r.label}</span>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -87,8 +108,9 @@ const LEGEND = [
   ['bg-[#DC2626]', 'Absent'], ['bg-[#7C3AED]', 'Leave'], ['bg-[#0097B2]', 'Holiday'],
 ]
 
-export default function AttendanceInfo() {
-  const { punch } = useApp()
+export default function AttendanceInfo({ onRegularise = () => {} }) {
+  const { punch, regularisations } = useApp()
+  const { user } = useAuth()
   const todayISO = localDate()
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
   const [selected, setSelected] = useState(todayISO)
@@ -98,6 +120,14 @@ export default function AttendanceInfo() {
   const [nowMin, setNowMin] = useState(nowMinutes)
   useEffect(() => { const t = setInterval(() => setNowMin(nowMinutes()), 60000); return () => clearInterval(t) }, [])
 
+  // This person's regularisation requests; the latest one per day is shown.
+  const myRegs = useMemo(() => (regularisations || []).filter((r) => r.empId === user?.id), [regularisations, user])
+  const regByDate = useMemo(() => {
+    const m = {}
+    for (const r of [...myRegs].reverse()) m[r.date] = r
+    return m
+  }, [myRegs])
+
   // Real punches: the saved history, plus today's punch from the seed data
   // (which predates history) when nothing else is recorded for today.
   const history = useMemo(() => {
@@ -105,8 +135,12 @@ export default function AttendanceInfo() {
     if (!h[todayISO] && punch?.inAt && (!punch.date || punch.date === todayISO)) h[todayISO] = { in: punch.inAt, out: punch.outAt }
     // Back in after a punch-out: today counts as "working now" again.
     if (h[todayISO] && isPunchedIn(punch)) h[todayISO] = { ...h[todayISO], out: null }
+    // An approved regularisation is the day's official record.
+    for (const r of myRegs) {
+      if (r.status === 'Approved') h[r.date] = { in: r.in || h[r.date]?.in || null, out: r.out || h[r.date]?.out || null }
+    }
     return h
-  }, [punch, todayISO])
+  }, [punch, todayISO, myRegs])
 
   const holidayDates = companyHolidays.map((h) => h.date)
   const rows = useMemo(() => buildMonth(cursor.y, cursor.m, holidayDates, history, todayISO, nowMin), [cursor, history, todayISO, nowMin]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -155,12 +189,13 @@ export default function AttendanceInfo() {
                   <span key={w} className="text-[10px] font-medium uppercase tracking-wide text-faint text-center pb-1">{w}</span>
                 ))}
                 {cells.map((r, i) => r
-                  ? <DayCell key={r.date} r={r} active={r.date === selected} onPick={setSelected} />
+                  ? <DayCell key={r.date} r={{ ...r, future: r.date > todayISO }} active={r.date === selected} reg={regByDate[r.date]} onPick={setSelected} onRegularise={onRegularise} />
                   : <span key={'x' + i} />)}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[10.5px] text-muted">
                 {LEGEND.map(([c, l]) => <span key={l} className="flex items-center gap-1.5"><i className={'h-2 w-2 rounded-full inline-block ' + c} />{l}</span>)}
                 <span className="flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm inline-block bg-[rgba(0,180,216,0.25)]" />Shift {SHIFT.window}</span>
+                <span className="flex items-center gap-1.5 text-cyan-ink font-medium"><PencilLine size={11} />Click a date or its times to regularise</span>
               </div>
             </>
           ) : (
@@ -199,6 +234,14 @@ export default function AttendanceInfo() {
                     <p className="text-[10px] text-faint">{SHIFT.scheme}</p>
                   </div>
                 </div>
+
+                {regByDate[day.date] && (
+                  <p className={'mt-3 rounded-lg px-2.5 py-1.5 text-[11.5px] font-medium ' + REG_CHIP[regByDate[day.date].status]}>
+                    Regularisation {regByDate[day.date].id} {regByDate[day.date].status.toLowerCase()}
+                    {regByDate[day.date].status === 'Approved' ? ' - these are the approved times' : ''}
+                    {regByDate[day.date].decidedBy ? ' by ' + regByDate[day.date].decidedBy : ''}
+                  </p>
+                )}
 
                 {day.status === 'P' ? (
                   <>
@@ -245,6 +288,12 @@ export default function AttendanceInfo() {
               </>
             ) : <p className="text-[12px] text-muted">Pick a day from the calendar.</p>}
           </Card>
+
+          {day && day.date <= todayISO && (
+            <button className="btn-primary w-full justify-center py-2" onClick={() => onRegularise(day)}>
+              <PencilLine size={14} /> Regularise {String(day.day).padStart(2, '0')} {MONTHS[cursor.m].slice(0, 3)}
+            </button>
+          )}
 
           <Card title="Session details" bodyClass="p-0">
             <Table
