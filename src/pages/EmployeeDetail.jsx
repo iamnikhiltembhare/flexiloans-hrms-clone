@@ -50,6 +50,7 @@ export default function EmployeeDetail() {
           <Card title="Employment details">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Employee ID" value={emp.id} />
+              <Field label="Sign-in username" value={emp.username} />
               <Field label="Date of joining" value={emp.joinDate} />
               <Field label="Reporting manager" value={emp.manager} />
               <Field label="Employment type" value={emp.employmentType} />

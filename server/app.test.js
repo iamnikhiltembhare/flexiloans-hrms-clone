@@ -22,15 +22,15 @@ function setup() {
   return { call, login, act }
 }
 
-const EMP = ['rohan.sharma', 'FlexiEmp@2026']
+const EMP = ['nikhil.tembhare', 'FlexiEmp@2026']
 const HR = ['hr.manager', 'FlexiHR@2026']
 const ADMIN = ['admin', 'Admin@2026']
 
 test('login returns a token and the user; bad passwords are rejected', async () => {
   const { call } = setup()
-  const ok = await call('POST', '/api/auth/login', { body: { username: 'Rohan.Sharma ', password: EMP[1] } })
+  const ok = await call('POST', '/api/auth/login', { body: { username: 'Nikhil.Tembhare ', password: EMP[1] } })
   assert.equal(ok.status, 200)
-  assert.equal(ok.data.user.name, 'Rohan Sharma')
+  assert.equal(ok.data.user.name, 'Nikhil Tembhare')
   assert.equal(ok.data.user.roleKey, 'employee')
   assert.ok(!('passwordHash' in ok.data.user))
 
@@ -61,7 +61,8 @@ test('employees only see their own leave and tickets, and no hiring data', async
   const emp = (await call('GET', '/api/state', { token: await login(...EMP) })).data
   assert.ok(emp.leaveRequests.length > 0)
   assert.ok(emp.leaveRequests.every((r) => r.empId === 'FL1009'))
-  assert.ok(emp.tickets.every((t) => t.raisedBy === 'Rohan Sharma'))
+  assert.ok(emp.tickets.length > 0)
+  assert.ok(emp.tickets.every((t) => t.raisedById === 'FL1009'))
   assert.deepEqual(emp.candidates, [])
   assert.deepEqual(emp.requisitions, [])
 
@@ -80,13 +81,13 @@ test('leave flow: apply, HR is notified, HR approves, employee is notified', asy
   })
   assert.equal(applied.status, 200)
   const mine = applied.data.state.leaveRequests.find((r) => r.id === 'LV-9999')
-  assert.equal(mine.employee, 'Rohan Sharma', 'server ignores a spoofed employee')
+  assert.equal(mine.employee, 'Nikhil Tembhare', 'server ignores a spoofed employee')
   assert.equal(mine.empId, 'FL1009')
   assert.equal(mine.status, 'Pending', 'server ignores a spoofed status')
   assert.equal(mine.days, 2)
 
   const hrState = (await call('GET', '/api/state', { token: hr })).data
-  assert.match(hrState.notifications[0].title, /Leave request from Rohan Sharma/)
+  assert.match(hrState.notifications[0].title, /Leave request from Nikhil Tembhare/)
 
   assert.equal((await act(emp, 'leave.setStatus', { id: 'LV-9999', status: 'Approved' })).status, 403, 'employees cannot approve')
   const approved = await act(hr, 'leave.setStatus', { id: 'LV-9999', status: 'Approved' })
@@ -210,4 +211,42 @@ test('accounts added to the code later are created without touching existing use
   const login = (u, p) => two(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }))
   assert.equal((await login('b', 'pw-b')).status, 200, 'new account created')
   assert.equal((await login('a', 'pw-a')).status, 200, 'existing password kept')
+})
+
+// --- directory logins -----------------------------------------------------
+
+import { employees } from '../src/data/mock.js'
+
+test('every directory employee can sign in with the employee password', async () => {
+  const { call } = setup()
+  const usernames = employees.map((e) => e.username)
+  assert.equal(new Set(usernames).size, usernames.length, 'usernames are unique')
+  assert.ok(usernames.includes('arjun.joshi2'), 'repeated names get a number')
+  for (const e of employees.filter((x) => x.username !== 'hr.manager')) {
+    const r = await call('POST', '/api/auth/login', { body: { username: e.username, password: 'FlexiEmp@2026' } })
+    assert.equal(r.status, 200, e.username)
+    assert.equal(r.data.user.id, e.id)
+    assert.equal(r.data.user.roleKey, 'employee')
+  }
+})
+
+test('a directory employee sees only their own leave, and it carries their name', async () => {
+  const { call, login } = setup()
+  const person = employees.find((e) => e.id === 'FL1015')
+  const token = await login(person.username, 'FlexiEmp@2026')
+  const state = (await call('GET', '/api/state', { token })).data
+  assert.ok(state.leaveRequests.length > 0)
+  assert.ok(state.leaveRequests.every((r) => r.empId === 'FL1015' && r.employee === person.name))
+})
+
+test('removed accounts stop working; kept ones keep their password', async () => {
+  const store = sqliteStore(':memory:')
+  const acct = (username, password) => ({ username, role: 'employee', profile: { id: username, name: username }, password })
+  const login = (app, u, p) => app(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) }))
+  const before = createApp({ store, secret: SECRET, accounts: [acct('keep', 'pw-keep'), acct('old', 'pw-old')] })
+  assert.equal((await login(before, 'old', 'pw-old')).status, 200)
+  const after = createApp({ store, secret: SECRET, accounts: [acct('keep', 'changed'), acct('new', 'pw-new')] })
+  assert.equal((await login(after, 'old', 'pw-old')).status, 401, 'removed')
+  assert.equal((await login(after, 'keep', 'pw-keep')).status, 200, 'password kept')
+  assert.equal((await login(after, 'new', 'pw-new')).status, 200, 'added')
 })

@@ -8,7 +8,7 @@
 //   POST /api/admin/reset     super admin only: restore the seed data
 //   GET  /api/health
 
-import { ACCOUNTS, DEMO_PASSWORDS, ROLES, PERMS } from '../src/data/accounts.js'
+import { ALL_ACCOUNTS, passwordFor, ROLES, PERMS } from '../src/data/accounts.js'
 import { SEED } from '../src/data/seed.js'
 import { ACTIONS, COLLECTIONS, applyAction } from '../src/lib/actions.js'
 import { hashPassword, verifyPassword, issueToken, readToken } from './auth.js'
@@ -44,7 +44,7 @@ function publicUser(record) {
   }
 }
 
-const DEMO_LOGINS = ACCOUNTS.map((a) => ({ ...a, password: DEMO_PASSWORDS[a.username] }))
+const DEMO_LOGINS = ALL_ACCOUNTS.map((a) => ({ ...a, password: passwordFor(a.username) }))
 
 /**
  * `accounts` are the logins this instance knows: [{ username, role, profile,
@@ -56,18 +56,27 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
 
   // --- data access --------------------------------------------------------
 
-  // Stored users, seeded on first use. Accounts added to the code later are
-  // created on the next request; existing users (and their passwords) are
-  // never overwritten.
+  // Stored users. The code's account list decides who exists and what their
+  // profile says: new accounts are created, removed ones stop working, and
+  // profile edits are picked up. Password hashes are never regenerated for
+  // an account that already exists. Checked once per server instance.
+  const wanted = new Map(accounts.map((a) => [a.username, a]))
+  const current = (u) => {
+    const a = wanted.get(u.username)
+    return a && a.role === u.role && JSON.stringify(a.profile) === JSON.stringify(u.profile)
+  }
+  let synced = null
   async function users() {
+    if (synced) return synced
     const existing = (await store.get('users')) || []
-    const missing = accounts.filter((a) => !existing.some((u) => u.username === a.username))
-    if (!missing.length) return existing
-    const created = await Promise.all(missing.map(async (a) => ({
-      username: a.username, role: a.role, profile: a.profile, passwordHash: await hashPassword(a.password),
+    if (existing.length === accounts.length && existing.every(current)) return (synced = existing)
+    const hashes = new Map(existing.map((u) => [u.username, u.passwordHash]))
+    const next = await Promise.all(accounts.map(async (a) => ({
+      username: a.username, role: a.role, profile: a.profile,
+      passwordHash: hashes.get(a.username) ?? await hashPassword(a.password),
     })))
-    // Another instance may have seeded at the same time; merge by username.
-    return store.update('users', (cur) => [...(cur || []), ...created.filter((c) => !(cur || []).some((u) => u.username === c.username))])
+    await store.set('users', next)
+    return (synced = next)
   }
 
   const read = async (collection, username) =>

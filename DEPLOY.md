@@ -71,7 +71,8 @@ values in the file override the Netlify UI.
 |------|----------|----------|
 | Super Admin | `admin` | `Admin@2026` |
 | HR Professional | `hr.manager` | `FlexiHR@2026` |
-| Employee | `rohan.sharma` | `FlexiEmp@2026` |
+| Employee | `nikhil.tembhare` | `FlexiEmp@2026` |
+| Every other employee | `firstname.lastname` | `FlexiEmp@2026` |
 
 ## From then on it is automatic
 

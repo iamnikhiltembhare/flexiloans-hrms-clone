@@ -7,7 +7,7 @@ import {
 } from './mock.js'
 
 export const SEED_NOTIFICATIONS = [
-  { id: 'n1', title: 'Leave request awaiting approval', detail: 'Sneha Iyer applied for 1 day of Sick Leave', time: '12 min ago', to: '/leave', kind: 'leave', read: false },
+  { id: 'n1', title: 'Leave request awaiting approval', detail: leaveRequests.find((r) => r.id === 'LV-2040').employee + ' applied for 1 day of Sick Leave', time: '12 min ago', to: '/leave', kind: 'leave', read: false },
   { id: 'n2', title: 'Reimbursement SLA breached', detail: 'HD-8822 has crossed its resolution window', time: '1 hour ago', to: '/helpdesk', kind: 'alert', read: false },
   { id: 'n3', title: 'Offer awaiting your sign-off', detail: 'Nilesh Bose - Area Sales Manager, Delhi NCR', time: '3 hours ago', to: '/recruitment', kind: 'task', read: false },
   { id: 'n4', title: 'September payroll is processing', detail: 'Payslips will be available on 30 September', time: 'Yesterday', to: '/payroll', kind: 'info', read: false },

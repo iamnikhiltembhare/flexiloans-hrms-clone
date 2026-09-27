@@ -19,10 +19,13 @@ npm run preview  # serve the production build
 |------|----------|----------|--------|
 | Super Admin | `admin` | `Admin@2026` | Everything, including organisation settings and System Admin |
 | HR Professional | `hr.manager` | `FlexiHR@2026` | Self-service + Employees, Recruitment, Helpdesk, Reports |
-| Employee | `rohan.sharma` | `FlexiEmp@2026` | Self-service only - no HR tools |
+| Employee | `nikhil.tembhare` | `FlexiEmp@2026` | Self-service only - no HR tools |
+| Every other employee | `firstname.lastname` (e.g. `nilesh.shaikh`) | `FlexiEmp@2026` | Self-service - one login per person in the People directory |
 
 Click a row on the login screen to fill the form; wrong credentials are rejected.
-Accounts, roles and permissions live in `src/data/accounts.js`.
+Accounts, roles and permissions live in `src/data/accounts.js`. Each employee's
+username is shown on their record (Employees -> open a person); repeated names
+get a number, e.g. `arjun.joshi2`.
 
 ### Roles and permissions
 

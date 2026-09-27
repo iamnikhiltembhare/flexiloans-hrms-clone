@@ -4,7 +4,7 @@ import { User, Lock, Eye, EyeOff, CalendarCheck, CalendarDays, Wallet, Smartphon
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
-import { ACCOUNTS, ROLES, DEMO_PASSWORDS } from '../data/accounts.js'
+import { ACCOUNTS, ROLES, DEMO_PASSWORDS, EMPLOYEE_PASSWORD } from '../data/accounts.js'
 import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
 import { API_MODE, IS_TEST_BUILD } from '../lib/api.js'
 import { TEST_ACCOUNTS, TEST_PASSWORDS } from '../data/testAccounts.js'
@@ -17,7 +17,8 @@ import { ThemeToggle } from '../components/ThemeToggle.jsx'
 const QUICK_LOGINS = IS_TEST_BUILD
   ? { title: 'Test build - test logins', list: TEST_ACCOUNTS, passwords: TEST_PASSWORDS }
   : !API_MODE
-    ? { title: 'Demo build - test logins', list: ACCOUNTS, passwords: DEMO_PASSWORDS }
+    ? { title: 'Demo build - test logins', list: ACCOUNTS, passwords: DEMO_PASSWORDS,
+        note: 'Anyone in the People directory can also sign in as firstname.lastname with ' + EMPLOYEE_PASSWORD + '.' }
     : null
 
 export default function Login() {
@@ -136,6 +137,7 @@ export default function Login() {
             </button>
           ))}
           <p className="text-[10px] text-faint mt-2 px-2.5">Tap a row to fill the form.</p>
+          {QUICK_LOGINS.note && <p className="text-[10px] text-faint mt-1 px-2.5">{QUICK_LOGINS.note}</p>}
         </div>
         )}
       </div>

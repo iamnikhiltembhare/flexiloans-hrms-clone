@@ -22,7 +22,7 @@ export const locations = ['Mumbai HQ','Delhi NCR','Bengaluru','Pune','Chennai','
 function seeded(i) { return (Math.sin(i * 12.9898) * 43758.5453) % 1 }
 function pick(arr, i) { return arr[Math.floor(Math.abs(seeded(i)) * arr.length) % arr.length] }
 
-export const employees = Array.from({ length: 64 }, (_, i) => {
+const generated = Array.from({ length: 64 }, (_, i) => {
   const dept = pick(departments, i + 3)
   const first = pick(firstNames, i + 1)
   const last = pick(lastNames, i + 7)
@@ -42,6 +42,30 @@ export const employees = Array.from({ length: 64 }, (_, i) => {
     employmentType: i % 11 === 0 ? 'Contract' : 'Permanent',
   }
 })
+
+// Two directory entries are the people behind the HR and employee demo
+// logins in accounts.js; keep them in step with those profiles.
+const PINNED = {
+  FL1008: { name: 'Aarti Deshmukh', department: 'Human Resources', designation: 'HR Business Partner', location: 'Mumbai HQ',
+    joinDate: '2021-06-14', phone: '+91 98200 11008', gender: 'Female', manager: 'Rakesh Menon', status: 'Active',
+    employmentType: 'Permanent', experience: '9 yrs', username: 'hr.manager' },
+  FL1009: { name: 'Nikhil Tembhare', department: 'Engineering', designation: 'Software Engineer', location: 'Pune',
+    joinDate: '2023-09-04', phone: '+91 98200 31009', gender: 'Male', manager: 'Arjun Shaikh', status: 'Active',
+    employmentType: 'Permanent', experience: '4 yrs', username: 'nikhil.tembhare' },
+}
+
+// Everyone in the directory can sign in. The login is the email name,
+// firstname.lastname, with a number for repeated names (arjun.joshi2).
+const taken = {}
+export const employees = generated.map((e) => {
+  const { username, ...person } = { ...e, ...PINNED[e.id] }
+  const base = person.name.toLowerCase().replace(/[^a-z]+/g, '.')
+  taken[base] = (taken[base] || 0) + 1
+  const handle = taken[base] > 1 ? base + taken[base] : base
+  return { ...person, email: handle + '@' + BRAND.emailDomain, username: username || handle }
+})
+
+const byId = (id) => employees.find((e) => e.id === id)
 
 export const attendanceSummary = {
   present: 21, absent: 1, leave: 2, halfDay: 1, wfh: 4,
@@ -76,14 +100,14 @@ export const leaveBalances = [
 ].map((l) => ({ ...l, bar: l.bar || l.color, total: l.granted, balance: l.granted - l.used }))
 
 export const leaveRequests = [
-  { id: 'LV-2041', employee: 'Rohan Sharma', empId: 'FL1009', type: 'Casual Leave', from: '2026-09-24', to: '2026-09-25', days: 2, reason: 'Family function', status: 'Pending', appliedOn: '2026-09-18' },
-  { id: 'LV-2040', employee: 'Sneha Iyer', empId: 'FL1015', type: 'Sick Leave', from: '2026-09-22', to: '2026-09-22', days: 1, reason: 'Fever', status: 'Pending', appliedOn: '2026-09-21' },
-  { id: 'LV-2039', employee: 'Imran Shaikh', empId: 'FL1022', type: 'Earned Leave', from: '2026-10-02', to: '2026-10-08', days: 5, reason: 'Vacation - Goa', status: 'Pending', appliedOn: '2026-09-15' },
-  { id: 'LV-2038', employee: 'Priya Nair', empId: 'FL1031', type: 'Casual Leave', from: '2026-09-12', to: '2026-09-12', days: 1, reason: 'Personal work', status: 'Approved', appliedOn: '2026-09-09' },
-  { id: 'LV-2037', employee: 'Karthik Reddy', empId: 'FL1044', type: 'Comp Off', from: '2026-09-08', to: '2026-09-08', days: 1, reason: 'Weekend release support', status: 'Approved', appliedOn: '2026-09-05' },
-  { id: 'LV-2036', employee: 'Meera Kulkarni', empId: 'FL1050', type: 'Sick Leave', from: '2026-09-01', to: '2026-09-03', days: 3, reason: 'Medical', status: 'Rejected', appliedOn: '2026-08-30' },
-  { id: 'LV-2035', employee: 'Vikram Singh', empId: 'FL1058', type: 'Earned Leave', from: '2026-08-18', to: '2026-08-22', days: 5, reason: 'Wedding', status: 'Approved', appliedOn: '2026-08-01' },
-]
+  { id: 'LV-2041', empId: 'FL1009', type: 'Casual Leave', from: '2026-09-24', to: '2026-09-25', days: 2, reason: 'Family function', status: 'Pending', appliedOn: '2026-09-18' },
+  { id: 'LV-2040', empId: 'FL1015', type: 'Sick Leave', from: '2026-09-22', to: '2026-09-22', days: 1, reason: 'Fever', status: 'Pending', appliedOn: '2026-09-21' },
+  { id: 'LV-2039', empId: 'FL1022', type: 'Earned Leave', from: '2026-10-02', to: '2026-10-08', days: 5, reason: 'Vacation - Goa', status: 'Pending', appliedOn: '2026-09-15' },
+  { id: 'LV-2038', empId: 'FL1031', type: 'Casual Leave', from: '2026-09-12', to: '2026-09-12', days: 1, reason: 'Personal work', status: 'Approved', appliedOn: '2026-09-09' },
+  { id: 'LV-2037', empId: 'FL1044', type: 'Comp Off', from: '2026-09-08', to: '2026-09-08', days: 1, reason: 'Weekend release support', status: 'Approved', appliedOn: '2026-09-05' },
+  { id: 'LV-2036', empId: 'FL1050', type: 'Sick Leave', from: '2026-09-01', to: '2026-09-03', days: 3, reason: 'Medical', status: 'Rejected', appliedOn: '2026-08-30' },
+  { id: 'LV-2035', empId: 'FL1058', type: 'Earned Leave', from: '2026-08-18', to: '2026-08-22', days: 5, reason: 'Wedding', status: 'Approved', appliedOn: '2026-08-01' },
+].map((r) => ({ ...r, employee: byId(r.empId).name }))
 
 export const holidays = [
   { date: '2026-10-02', name: 'Gandhi Jayanti', day: 'Friday', type: 'National' },
@@ -172,13 +196,13 @@ export const competencies = [
 ]
 
 export const tickets = [
-  { id: 'HD-8841', subject: 'Payslip for August not downloadable', category: 'Payroll', priority: 'High', status: 'Open', raisedBy: 'Rohan Sharma', assignee: 'Payroll Desk', created: '2026-09-19', sla: '4h left' },
-  { id: 'HD-8836', subject: 'Access request - Tableau reporting workspace', category: 'IT', priority: 'Medium', status: 'In Progress', raisedBy: 'Sneha Iyer', assignee: 'IT Helpdesk', created: '2026-09-17', sla: '1d left' },
-  { id: 'HD-8829', subject: 'Update emergency contact details', category: 'HR Records', priority: 'Low', status: 'Resolved', raisedBy: 'Imran Shaikh', assignee: 'HR Ops', created: '2026-09-14', sla: 'Met' },
-  { id: 'HD-8822', subject: 'Reimbursement pending for client travel', category: 'Finance', priority: 'High', status: 'In Progress', raisedBy: 'Vikram Singh', assignee: 'Finance Desk', created: '2026-09-12', sla: 'Breached' },
-  { id: 'HD-8815', subject: 'Laptop replacement request', category: 'IT', priority: 'Medium', status: 'Open', raisedBy: 'Priya Nair', assignee: 'IT Helpdesk', created: '2026-09-10', sla: '2d left' },
-  { id: 'HD-8801', subject: 'Query on new insurance coverage limits', category: 'Benefits', priority: 'Low', status: 'Resolved', raisedBy: 'Meera Kulkarni', assignee: 'Benefits Desk', created: '2026-09-04', sla: 'Met' },
-]
+  { id: 'HD-8841', subject: 'Payslip for August not downloadable', category: 'Payroll', priority: 'High', status: 'Open', raisedById: 'FL1009', assignee: 'Payroll Desk', created: '2026-09-19', sla: '4h left' },
+  { id: 'HD-8836', subject: 'Access request - Tableau reporting workspace', category: 'IT', priority: 'Medium', status: 'In Progress', raisedById: 'FL1015', assignee: 'IT Helpdesk', created: '2026-09-17', sla: '1d left' },
+  { id: 'HD-8829', subject: 'Update emergency contact details', category: 'HR Records', priority: 'Low', status: 'Resolved', raisedById: 'FL1022', assignee: 'HR Ops', created: '2026-09-14', sla: 'Met' },
+  { id: 'HD-8822', subject: 'Reimbursement pending for client travel', category: 'Finance', priority: 'High', status: 'In Progress', raisedById: 'FL1058', assignee: 'Finance Desk', created: '2026-09-12', sla: 'Breached' },
+  { id: 'HD-8815', subject: 'Laptop replacement request', category: 'IT', priority: 'Medium', status: 'Open', raisedById: 'FL1031', assignee: 'IT Helpdesk', created: '2026-09-10', sla: '2d left' },
+  { id: 'HD-8801', subject: 'Query on new insurance coverage limits', category: 'Benefits', priority: 'Low', status: 'Resolved', raisedById: 'FL1050', assignee: 'Benefits Desk', created: '2026-09-04', sla: 'Met' },
+].map((t) => ({ ...t, raisedBy: byId(t.raisedById).name }))
 
 export const headcountTrend = [
   { month: 'Apr', headcount: 512, joiners: 18, exits: 9 },

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Check, X, Download, ShieldCheck, Users, ScrollText, Plug } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, SearchInput } from '../components/ui.jsx'
-import { ACCOUNTS, ROLES } from '../data/accounts.js'
+import { ALL_ACCOUNTS, ROLES } from '../data/accounts.js'
 import { auditLog, roleMatrix, integrations, systemHealth } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
@@ -15,7 +15,7 @@ export default function SystemAdmin() {
   const [tab, setTab] = useState('User accounts')
   const [q, setQ] = useState('')
 
-  const accounts = ACCOUNTS.map((a) => ({
+  const accounts = ALL_ACCOUNTS.map((a) => ({
     username: a.username,
     name: a.profile.name,
     email: a.profile.email,
@@ -45,7 +45,7 @@ export default function SystemAdmin() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Configured roles" value={Object.keys(ROLES).length} icon={ShieldCheck} tone="purple" />
-        <StatCard label="Demo logins" value={ACCOUNTS.length} hint="seeded accounts in this build" icon={Users} tone="cyan" />
+        <StatCard label="Sign-in accounts" value={ALL_ACCOUNTS.length} hint="every employee plus HR and admin" icon={Users} tone="cyan" />
         <StatCard label="Audit events" value={auditLog.length} hint="shown in this view" icon={ScrollText} tone="blue" />
         <StatCard label="Integrations" value={integrations.filter((i) => i.status === 'Connected').length + '/' + integrations.length} hint="fully connected" icon={Plug} tone="green" />
       </div>

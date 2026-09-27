@@ -1,4 +1,5 @@
 import { BRAND } from '../lib/brand.js'
+import { employees } from './mock.js'
 
 // Role and account registry for the FlexiLoans HRMS demo.
 // ACCOUNTS is safe to ship anywhere: usernames, roles and profiles only.
@@ -66,10 +67,10 @@ export const ACCOUNTS = [
     },
   },
   {
-    username: 'rohan.sharma',
+    username: 'nikhil.tembhare',
     role: 'employee',
     profile: {
-      id: 'FL1009', name: 'Rohan Sharma', email: 'rohan.sharma@' + BRAND.emailDomain,
+      id: 'FL1009', name: 'Nikhil Tembhare', email: 'nikhil.tembhare@' + BRAND.emailDomain,
       designation: 'Software Engineer', department: 'Engineering', location: 'Pune',
       manager: 'Arjun Shaikh', joinDate: '2023-09-04', phone: '+91 98200 31009',
       bloodGroup: 'A+', dob: '1996-11-23', gender: 'Male', employmentType: 'Permanent',
@@ -78,16 +79,38 @@ export const ACCOUNTS = [
   },
 ]
 
+// Everyone else in the People directory signs in as an employee, with the
+// login shown on their record (firstname.lastname) and the employee password.
+export const DIRECTORY_ACCOUNTS = employees
+  .filter((e) => !ACCOUNTS.some((a) => a.profile.id === e.id))
+  .map((e) => ({
+    username: e.username,
+    role: 'employee',
+    profile: {
+      id: e.id, name: e.name, email: e.email, designation: e.designation, department: e.department,
+      location: e.location, manager: e.manager, joinDate: e.joinDate, phone: e.phone, gender: e.gender,
+      employmentType: e.employmentType, bloodGroup: 'Not provided', dob: 'Not provided', grade: 'Not provided',
+      bank: 'Not provided', pan: 'Not provided', uan: 'Not provided',
+    },
+  }))
+
+export const ALL_ACCOUNTS = [...ACCOUNTS, ...DIRECTORY_ACCOUNTS]
+
+export const EMPLOYEE_PASSWORD = 'FlexiEmp@2026'
+
 export const DEMO_PASSWORDS = {
   'admin': 'Admin@2026',
   'hr.manager': 'FlexiHR@2026',
-  'rohan.sharma': 'FlexiEmp@2026',
+  'nikhil.tembhare': EMPLOYEE_PASSWORD,
 }
+
+/** The seeded password for any known account. */
+export const passwordFor = (username) => DEMO_PASSWORDS[username] ?? EMPLOYEE_PASSWORD
 
 export function authenticate(username, password) {
   const u = String(username).trim().toLowerCase()
-  const found = ACCOUNTS.find((a) => a.username === u)
-  if (!found || DEMO_PASSWORDS[found.username] !== password) return null
+  const found = ALL_ACCOUNTS.find((a) => a.username === u)
+  if (!found || passwordFor(found.username) !== password) return null
   const role = ROLES[found.role]
   return {
     ...found.profile,
