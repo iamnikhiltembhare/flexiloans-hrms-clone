@@ -3,7 +3,7 @@
 // authoritative (who raised it, its status, the date) is set by the server.
 
 import { PERMS } from '../src/data/accounts.js'
-import { CANDIDATE_STAGES, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
+import { CANDIDATE_STAGES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
 
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status }
@@ -78,16 +78,23 @@ export function prepare(type, payload, actor, current) {
       return { ticket: {
         id: uniqueId(current, t.id, /^HD-\d+$/, 'HD-', 8841),
         subject: required(t.subject, 'Subject', 160),
-        category: str(t.category, 40) || 'General',
+        category: oneOf(t.category, Object.keys(TICKET_DESKS), 'HR Records'),
         priority: oneOf(t.priority, ['Low', 'Medium', 'High'], 'Medium'),
-        status: 'Open', sla: '8h left', assignee: 'HR Ops',
+        status: 'Open', sla: '8h left', assignee: TICKET_DESKS[t.category]?.desk || 'HR Ops',
         raisedBy: actor.name, raisedById: actor.id, created: today(),
       } }
     }
 
     case 'ticket.setStatus': {
       const target = find(current, p.id, 'Ticket')
-      return { id: target.id, status: oneOf(p.status, ['Open', 'In Progress', 'Resolved']) || bad('Unknown ticket status') }
+      const status = oneOf(p.status, TICKET_STATUSES) || bad('Unknown ticket status')
+      const admin = actor.perms.includes(PERMS.ADMIN_SYSTEM)
+      // HR works HR tickets. Approving, rejecting, or touching another
+      // department's ticket at all is for a super admin.
+      if ((status === 'Approved' || status === 'Rejected') && !admin) forbidden('Only a super admin can approve or reject tickets.')
+      if (needsAdminApproval(target.category) && !admin) forbidden(target.category + ' tickets are approved by a super admin.')
+      if (status === 'Approved' && ticketClosed(target.status)) bad(target.id + ' is already ' + target.status.toLowerCase())
+      return { id: target.id, status, by: actor.name }
     }
 
     case 'announcement.add': {
@@ -130,9 +137,12 @@ export function prepare(type, payload, actor, current) {
     }
 
     case 'punch.toggle': {
-      // The display time comes from the device so it matches the user's clock.
+      // Time and date come from the device so they match the user's clock and
+      // time zone; the date must still be within a day of the server's.
       const now = /^\d{1,2}:\d{2}\s?(am|pm)$/i.test(p.now) ? p.now : bad('Invalid time')
-      return { now }
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : bad('Invalid date')
+      if (Math.abs(Date.parse(date) - Date.now()) > 36 * 3600 * 1000) bad('That date is not today')
+      return { now, date }
     }
 
     case 'notification.add': {

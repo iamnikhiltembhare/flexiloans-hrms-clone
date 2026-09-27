@@ -9,6 +9,7 @@ import { useApp } from '../context/DataContext.jsx'
 import { Avatar } from './ui.jsx'
 import { haptic, useBackHandler } from '../lib/native.js'
 import { ThemeToggle } from './ThemeToggle.jsx'
+import { isPunchedIn } from '../lib/actions.js'
 
 // Server notifications carry an ISO timestamp; seed data has a fixed label.
 function when(n) {
@@ -76,7 +77,7 @@ export default function Topbar({ onMenu }) {
   }, [focused])
 
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const punchedIn = Boolean(punch.inAt) && !punch.outAt
+  const punchedIn = isPunchedIn(punch)
 
   const results = useMemo(() => {
     const term = q.trim().toLowerCase()

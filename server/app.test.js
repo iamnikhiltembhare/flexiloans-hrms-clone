@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createApp } from './app.js'
 import { sqliteStore } from './store-sqlite.js'
+import { localDate } from '../src/lib/actions.js'
 
 const SECRET = 'test-secret-that-is-at-least-32-characters'
 const BASE = 'http://api.test'
@@ -125,16 +126,16 @@ test('tickets: raised by an employee, resolved by HR, ids stay unique', async ()
   const b = await act(emp, 'ticket.add', { ticket: { id: 'HD-9000', subject: 'Second one' } })
   assert.equal(a.data.result, 'HD-9000')
   assert.notEqual(b.data.result, 'HD-9000', 'a duplicate id gets a fresh one')
-  const done = await act(hr, 'ticket.setStatus', { id: 'HD-9000', status: 'Resolved' })
+  const done = await act(hr, 'ticket.setStatus', { id: 'HD-9000', status: 'Resolved', category: 'ignored' })
   assert.equal(done.data.state.tickets.find((t) => t.id === 'HD-9000').sla, 'Met')
 })
 
 test('punch in and out is per person', async () => {
   const { call, login, act } = setup()
   const emp = await login(...EMP)
-  const first = await act(emp, 'punch.toggle', { now: '09:10 am' })
+  const first = await act(emp, 'punch.toggle', { now: '09:10 am', date: localDate() })
   assert.deepEqual(first.data.result, { action: 'out', now: '09:10 am' }, 'seed starts punched in')
-  const again = await act(emp, 'punch.toggle', { now: '09:15 am' })
+  const again = await act(emp, 'punch.toggle', { now: '09:15 am', date: localDate() })
   assert.equal(again.data.result.action, 'in')
   const hrPunch = (await call('GET', '/api/state', { token: await login(...HR) })).data.punch
   assert.equal(hrPunch.inAt, '09:34 AM', 'another user is untouched')
@@ -249,4 +250,84 @@ test('removed accounts stop working; kept ones keep their password', async () =>
   assert.equal((await login(after, 'old', 'pw-old')).status, 401, 'removed')
   assert.equal((await login(after, 'keep', 'pw-keep')).status, 200, 'password kept')
   assert.equal((await login(after, 'new', 'pw-new')).status, 200, 'added')
+})
+
+// --- ticket approvals across departments ----------------------------------
+
+test('HR works HR tickets; other departments need a super admin to approve', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const hr = await login(...HR)
+  const admin = await login(...ADMIN)
+  const it = (await act(emp, 'ticket.add', { ticket: { subject: 'VPN access', category: 'IT' } })).data
+  const itId = it.result
+  assert.equal(it.state.tickets.find((t) => t.id === itId).assignee, 'IT Helpdesk', 'routed to the owning desk')
+  const payroll = (await act(emp, 'ticket.add', { ticket: { subject: 'Payslip query', category: 'Payroll' } })).data.result
+
+  assert.equal((await act(hr, 'ticket.setStatus', { id: payroll, status: 'Resolved' })).status, 200, 'HR resolves HR tickets')
+  assert.equal((await act(hr, 'ticket.setStatus', { id: itId, status: 'In Progress' })).status, 403, 'HR cannot work IT tickets')
+  assert.equal((await act(hr, 'ticket.setStatus', { id: payroll, status: 'Approved' })).status, 403, 'HR cannot approve')
+  assert.equal((await act(emp, 'ticket.setStatus', { id: itId, status: 'Approved' })).status, 403)
+
+  const ok = await act(admin, 'ticket.setStatus', { id: itId, status: 'Approved' })
+  assert.equal(ok.status, 200)
+  const t = ok.data.state.tickets.find((x) => x.id === itId)
+  assert.equal(t.status, 'Approved')
+  assert.equal(t.decidedBy, 'System Administrator')
+  assert.equal((await act(admin, 'ticket.setStatus', { id: payroll, status: 'Approved' })).status, 400, 'cannot approve a closed ticket')
+})
+
+// --- punch history ----------------------------------------------------------
+
+test('punches keep the first in and last out of each day', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const d = localDate()
+  await act(emp, 'punch.toggle', { now: '09:10 am', date: d }) // seed starts punched in -> out
+  await act(emp, 'punch.toggle', { now: '09:40 am', date: d }) // in
+  const out = await act(emp, 'punch.toggle', { now: '06:55 pm', date: d }) // out
+  const day = out.data.state.punch.history[d]
+  assert.equal(day.out, '06:55 pm')
+  assert.ok(day.in, 'first in recorded')
+  assert.equal((await act(emp, 'punch.toggle', { now: '09:00 am', date: '2020-01-01' })).status, 400, 'far-off dates are rejected')
+})
+
+// --- user administration ----------------------------------------------------
+
+test('a super admin can create a user who can then sign in', async () => {
+  const { call, login } = setup()
+  const admin = await login(...ADMIN)
+  const hr = await login(...HR)
+  const body = { name: 'Priya Kapoor', username: 'priya.kapoor', role: 'hr', department: 'Human Resources', password: 'Welcome123' }
+  assert.equal((await call('POST', '/api/admin/users', { token: hr, body })).status, 403, 'HR cannot create users')
+  assert.equal((await call('POST', '/api/admin/users', { token: admin, body: { ...body, password: 'short' } })).status, 400)
+  assert.equal((await call('POST', '/api/admin/users', { token: admin, body: { ...body, username: 'nikhil.tembhare' } })).status, 400, 'taken')
+
+  const made = await call('POST', '/api/admin/users', { token: admin, body })
+  assert.equal(made.status, 200)
+  assert.ok(made.data.state.employees.some((e) => e.username === 'priya.kapoor'), 'added to the directory')
+
+  const r = await call('POST', '/api/auth/login', { body: { username: 'priya.kapoor', password: 'Welcome123' } })
+  assert.equal(r.status, 200)
+  assert.equal(r.data.user.roleKey, 'hr')
+  const list = (await call('GET', '/api/admin/users', { token: admin })).data.users
+  assert.equal(list.find((u) => u.username === 'priya.kapoor').source, 'admin')
+})
+
+test('users created by an admin survive the code account sync', async () => {
+  const store = sqliteStore(':memory:')
+  const acct = (username, password) => ({ username, role: 'employee', profile: { id: username, name: username }, password })
+  const v1 = createApp({ store, secret: SECRET, accounts: [acct('seed', 'pw-seed')] })
+  const tok = async (app) => (await (await app(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'seed', password: 'pw-seed' }) }))).json()).token
+  // make "seed" an admin for this test by giving the store a super admin
+  const adminApp = createApp({ store, secret: SECRET, accounts: [acct('seed', 'pw-seed'), { ...acct('boss', 'pw-boss'), role: 'super_admin' }] })
+  const boss = await (await adminApp(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'boss', password: 'pw-boss' }) }))).json()
+  const made = await adminApp(new Request(BASE + '/api/admin/users', { method: 'POST', headers: { Authorization: 'Bearer ' + boss.token },
+    body: JSON.stringify({ name: 'New Person', username: 'new.person', role: 'employee', password: 'Password1' }) }))
+  assert.equal(made.status, 200)
+  // A later deploy with a different code account list keeps the admin-made user.
+  const v2 = createApp({ store, secret: SECRET, accounts: [acct('seed', 'pw-seed')] })
+  const r = await v2(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'new.person', password: 'Password1' }) }))
+  assert.equal(r.status, 200)
+  assert.ok(await tok(v1))
 })

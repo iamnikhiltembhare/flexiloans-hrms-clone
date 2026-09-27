@@ -5,11 +5,12 @@ import {
 } from 'recharts'
 import {
   ShieldCheck, Users, Activity, KeyRound, ChevronRight, ServerCog,
-  AlertTriangle, Plug, CheckCircle2, ScrollText,
+  AlertTriangle, Plug, CheckCircle2, ScrollText, UserPlus, LifeBuoy,
 } from 'lucide-react'
 import { PageHeader, Card, StatCard, Badge, Table } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useApp } from '../../context/DataContext.jsx'
+import { needsAdminApproval, ticketClosed } from '../../lib/actions.js'
 import {
   systemHealth, roleMatrix, auditLog, loginActivity, integrations, headcountTrend,
 } from '../../data/mock.js'
@@ -26,7 +27,10 @@ export default function SuperAdminDashboard() {
   const degraded = systemHealth.filter((s) => s.status !== 'Operational')
   const failedLogins = loginActivity.reduce((s, d) => s + d.failed, 0)
 
+  const awaiting = tickets.filter((t) => needsAdminApproval(t.category) && !ticketClosed(t.status) && t.status !== 'Approved').length
   const shortcuts = [
+    { label: 'Ticket approvals', detail: awaiting ? awaiting + ' IT and Finance tickets waiting for you' : 'Nothing waiting for approval', to: '/helpdesk', icon: LifeBuoy },
+    { label: 'Create user', detail: 'Add a person and their login', to: '/system', icon: UserPlus },
     { label: 'System administration', detail: 'Accounts, roles and audit log', to: '/system', icon: ShieldCheck },
     { label: 'Organisation settings', detail: 'Work week, policies, integrations', to: '/settings', icon: ServerCog },
     { label: 'Employee directory', detail: employees.length + ' records', to: '/employees', icon: Users },

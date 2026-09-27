@@ -10,11 +10,13 @@
 
 import { ALL_ACCOUNTS, passwordFor, ROLES, PERMS } from '../src/data/accounts.js'
 import { SEED } from '../src/data/seed.js'
-import { ACTIONS, COLLECTIONS, applyAction } from '../src/lib/actions.js'
+import { BRAND } from '../src/lib/brand.js'
+import { ACTIONS, COLLECTIONS, applyAction, nextSerial, today } from '../src/lib/actions.js'
 import { hashPassword, verifyPassword, issueToken, readToken } from './auth.js'
 import { HttpError, prepare, visibleTo, fanOut, notificationFor } from './rules.js'
 
 const MAX_BODY = 64 * 1024
+const fail = (msg) => { throw new HttpError(400, msg) }
 const MAX_FAILURES = 5
 const LOCK_MS = 5 * 60 * 1000
 
@@ -58,25 +60,27 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
 
   // Stored users. The code's account list decides who exists and what their
   // profile says: new accounts are created, removed ones stop working, and
-  // profile edits are picked up. Password hashes are never regenerated for
-  // an account that already exists. Checked once per server instance.
+  // profile edits are picked up. Users a super admin created in the app
+  // (source: 'admin') are kept as they are. Password hashes are never
+  // regenerated for an account that already exists.
   const wanted = new Map(accounts.map((a) => [a.username, a]))
   const current = (u) => {
     const a = wanted.get(u.username)
     return a && a.role === u.role && JSON.stringify(a.profile) === JSON.stringify(u.profile)
   }
-  let synced = null
   async function users() {
-    if (synced) return synced
     const existing = (await store.get('users')) || []
-    if (existing.length === accounts.length && existing.every(current)) return (synced = existing)
+    const fromCode = existing.filter((u) => u.source !== 'admin')
+    if (fromCode.length === accounts.length && fromCode.every(current)) return existing
     const hashes = new Map(existing.map((u) => [u.username, u.passwordHash]))
-    const next = await Promise.all(accounts.map(async (a) => ({
+    const synced = await Promise.all(accounts.map(async (a) => ({
       username: a.username, role: a.role, profile: a.profile,
       passwordHash: hashes.get(a.username) ?? await hashPassword(a.password),
     })))
-    await store.set('users', next)
-    return (synced = next)
+    return store.update('users', (cur) => [
+      ...synced,
+      ...(cur || []).filter((u) => u.source === 'admin' && !wanted.has(u.username)),
+    ])
   }
 
   const read = async (collection, username) =>
@@ -186,6 +190,64 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     return { state: await stateFor(actor) }
   }
 
+  // --- user administration (super admin) ---------------------------------
+
+  const USERNAME = /^[a-z][a-z0-9._-]{2,39}$/
+  const accountRow = (u) => ({
+    username: u.username, name: u.profile.name, email: u.profile.email, empId: u.profile.id,
+    role: ROLES[u.role].label, roleKey: u.role, source: u.source === 'admin' ? 'admin' : 'seed',
+    createdBy: u.createdBy || null, createdAt: u.createdAt || null,
+  })
+
+  async function requireAdmin(req) {
+    const actor = await actorFrom(req)
+    if (!actor.perms.includes(PERMS.ADMIN_SYSTEM)) throw new HttpError(403, 'Only a super admin can manage users.')
+    return actor
+  }
+
+  async function listUsers(req) {
+    await requireAdmin(req)
+    return { users: (await users()).map(accountRow) }
+  }
+
+  async function createUser(req) {
+    const actor = await requireAdmin(req)
+    const b = await body(req)
+    const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
+    const name = text(b.name, 80) || fail('Full name is required')
+    const username = text(b.username, 40).toLowerCase()
+    if (!USERNAME.test(username)) fail('Username must be 3-40 characters: lowercase letters, numbers, dots, dashes or underscores, starting with a letter')
+    const role = ROLES[b.role] ? b.role : fail('Pick a role')
+    const password = typeof b.password === 'string' ? b.password : ''
+    if (password.length < 8 || !/[a-z]/i.test(password) || !/\d/.test(password)) fail('The password needs at least 8 characters, with letters and numbers')
+    const passwordHash = await hashPassword(password)
+
+    await users() // make sure the seeded accounts exist before checking for clashes
+    const employees = await read('employees')
+    const id = nextSerial(employees, 'FL', 1000)
+    const profile = {
+      id, name, email: text(b.email, 120) || username + '@' + BRAND.emailDomain,
+      designation: text(b.designation, 80) || ROLES[role].label, department: text(b.department, 60) || 'Operations',
+      location: text(b.location, 60) || 'Mumbai HQ', manager: text(b.manager, 80) || actor.name,
+      joinDate: today(), phone: text(b.phone, 30) || 'Not provided', gender: text(b.gender, 20) || 'Not specified',
+      employmentType: 'Permanent', bloodGroup: 'Not provided', dob: 'Not provided', grade: 'Not provided',
+      bank: 'Not provided', pan: 'Not provided', uan: 'Not provided',
+    }
+    await store.update('users', (cur) => {
+      if ((cur || []).some((u) => u.username === username)) fail('The username ' + username + ' is already taken')
+      return [...(cur || []), { username, role, profile, passwordHash, source: 'admin', createdBy: actor.name, createdAt: new Date().toISOString() }]
+    })
+    // They join the People directory too.
+    await store.update(keyFor('employees'), (cur) => [{
+      id, name, email: profile.email, phone: profile.phone, department: profile.department,
+      designation: profile.designation, location: profile.location, joinDate: profile.joinDate,
+      status: 'Probation', manager: profile.manager, experience: '0 yrs', gender: profile.gender,
+      employmentType: 'Permanent', username,
+    }, ...(cur ?? clone(SEED.employees))])
+
+    return { user: accountRow({ username, role, profile, source: 'admin', createdBy: actor.name }), state: await stateFor(actor) }
+  }
+
   const ROUTES = {
     'GET /api/health': async () => ({ ok: true, time: new Date().toISOString() }),
     'POST /api/auth/login': login,
@@ -193,6 +255,8 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     'GET /api/state': async (req) => stateFor(await actorFrom(req)),
     'POST /api/actions': act,
     'POST /api/admin/reset': reset,
+    'GET /api/admin/users': listUsers,
+    'POST /api/admin/users': createUser,
   }
 
   return async function handle(req) {

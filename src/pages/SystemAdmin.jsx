@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import { Check, X, Download, ShieldCheck, Users, ScrollText, Plug } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Check, X, Download, ShieldCheck, Users, ScrollText, Plug, UserPlus, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, SearchInput } from '../components/ui.jsx'
 import { ALL_ACCOUNTS, ROLES } from '../data/accounts.js'
+import { departments, locations } from '../data/mock.js'
+import Modal from '../components/Modal.jsx'
 import { auditLog, roleMatrix, integrations, systemHealth } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
@@ -11,20 +13,21 @@ const YesNo = ({ on }) => on
   : <X size={14} className="text-faint" />
 
 export default function SystemAdmin() {
-  const { toast } = useApp()
+  const { toast, notify, listUsers } = useApp()
   const [tab, setTab] = useState('User accounts')
   const [q, setQ] = useState('')
+  const [creating, setCreating] = useState(false)
 
-  const accounts = ALL_ACCOUNTS.map((a) => ({
-    username: a.username,
-    name: a.profile.name,
-    email: a.profile.email,
-    empId: a.profile.id,
-    role: ROLES[a.role].label,
-    tone: ROLES[a.role].tone,
-    perms: ROLES[a.role].perms.length,
-    status: 'Active',
-  })).filter((a) => (a.name + a.username + a.role).toLowerCase().includes(q.toLowerCase()))
+  // Accounts come from the server (or this browser, offline), so users an
+  // admin creates show up here straight away.
+  const [list, setList] = useState(null)
+  const load = useCallback(() => listUsers().then(setList).catch((e) => toast('Could not load accounts', e.message, 'error')), [listUsers, toast])
+  useEffect(() => { load() }, [load])
+
+  const accounts = (list || ALL_ACCOUNTS.map((a) => ({ username: a.username, name: a.profile.name, email: a.profile.email, empId: a.profile.id, roleKey: a.role, source: 'seed' })))
+    .map((a) => ({ ...a, role: ROLES[a.roleKey].label, tone: ROLES[a.roleKey].tone, perms: ROLES[a.roleKey].perms.length }))
+    .filter((a) => (a.name + a.username + a.role).toLowerCase().includes(q.toLowerCase()))
+  const createdCount = (list || []).filter((a) => a.source === 'admin').length
 
   const exportAudit = () => {
     downloadCSV('flexiloans-audit-log.csv', [
@@ -40,12 +43,16 @@ export default function SystemAdmin() {
       <PageHeader
         title="System administration"
         subtitle="Accounts, role permissions, audit trail and platform status"
-        actions={<button className="btn-secondary" onClick={exportAudit}><Download size={13} /> Export audit log</button>}
+        actions={<>
+          <button className="btn-secondary" onClick={exportAudit}><Download size={13} /> Export audit log</button>
+          <button className="btn-primary" onClick={() => setCreating(true)}><UserPlus size={13} /> Create user</button>
+        </>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Configured roles" value={Object.keys(ROLES).length} icon={ShieldCheck} tone="purple" />
-        <StatCard label="Sign-in accounts" value={ALL_ACCOUNTS.length} hint="every employee plus HR and admin" icon={Users} tone="cyan" />
+        <StatCard label="Sign-in accounts" value={list ? list.length : ALL_ACCOUNTS.length}
+          hint={createdCount ? createdCount + ' created by admins' : 'every employee plus HR and admin'} icon={Users} tone="cyan" />
         <StatCard label="Audit events" value={auditLog.length} hint="shown in this view" icon={ScrollText} tone="blue" />
         <StatCard label="Integrations" value={integrations.filter((i) => i.status === 'Connected').length + '/' + integrations.length} hint="fully connected" icon={Plug} tone="green" />
       </div>
@@ -65,6 +72,9 @@ export default function SystemAdmin() {
               { key: 'email', header: 'Email' },
               { key: 'role', header: 'Role', render: (r) => <Badge tone={r.tone}>{r.role}</Badge> },
               { key: 'perms', header: 'Permissions', align: 'right', mono: true },
+              { key: 'source', header: 'Added', render: (r) => r.source === 'admin'
+                ? <span className="text-[11px]"><Badge tone="purple">By admin</Badge>{r.createdBy && <span className="block text-faint mt-0.5">{r.createdBy}</span>}</span>
+                : <span className="text-[11px] text-faint">Directory</span> },
               { key: 'status', header: 'Status', render: () => <Badge tone="green">Active</Badge> },
             ]}
             rows={accounts}
@@ -146,6 +156,90 @@ export default function SystemAdmin() {
           </Card>
         </div>
       )}
+      <CreateUser open={creating} onClose={() => setCreating(false)}
+        onCreated={(u) => {
+          toast('User created', u.name + ' can now sign in as ' + u.username)
+          notify({ title: 'New user ' + u.username, detail: u.name + ' - ' + u.role, to: '/system', kind: 'task' })
+          load()
+        }} />
     </>
+  )
+}
+
+const slug = (name) => name.trim().toLowerCase().replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '')
+const makePassword = () => {
+  const words = ['Flexi', 'Horizon', 'Summit', 'Cedar', 'Nova', 'Harbor']
+  return words[Math.floor(Math.random() * words.length)] + '@' + (1000 + Math.floor(Math.random() * 9000))
+}
+const BLANK = { name: '', username: '', role: 'employee', department: 'Engineering', designation: '', location: 'Mumbai HQ', password: '' }
+
+function CreateUser({ open, onClose, onCreated }) {
+  const { createUser } = useApp()
+  const [form, setForm] = useState(BLANK)
+  const [touchedUsername, setTouchedUsername] = useState(false)
+  const [show, setShow] = useState(true)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const set = (k) => (e) => {
+    const v = e.target.value
+    setForm((f) => ({ ...f, [k]: v, ...(k === 'name' && !touchedUsername ? { username: slug(v) } : {}) }))
+    if (k === 'username') setTouchedUsername(true)
+  }
+  const close = () => { setForm(BLANK); setTouchedUsername(false); setErr(''); onClose() }
+
+  const submit = async (e) => {
+    e?.preventDefault()
+    if (!form.name.trim()) { setErr('Enter the person\'s full name.'); return }
+    setBusy(true); setErr('')
+    try {
+      const made = await createUser(form)
+      onCreated(made)
+      close()
+    } catch (x) {
+      setErr(x.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={close} title="Create user" subtitle="Adds the person to the People directory with a login"
+      footer={<>
+        <button className="btn-ghost" onClick={close}>Cancel</button>
+        <button className="btn-primary" onClick={submit} disabled={busy}><UserPlus size={13} /> {busy ? 'Creating...' : 'Create user'}</button>
+      </>}>
+      <form onSubmit={submit} className="grid gap-3">
+        <div><label className="label">Full name *</label><input className="input" value={form.name} onChange={set('name')} placeholder="e.g. Priya Kapoor" autoFocus /></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label">Username *</label><input className="input font-mono" value={form.username} onChange={set('username')} placeholder="priya.kapoor" autoCapitalize="none" /></div>
+          <div><label className="label">Role *</label>
+            <select className="input" value={form.role} onChange={set('role')}>
+              {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
+            </select>
+          </div>
+        </div>
+        <p className="-mt-1 text-[11px] text-muted">{ROLES[form.role].description}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label">Department</label><select className="input" value={form.department} onChange={set('department')}>{departments.map((d) => <option key={d}>{d}</option>)}</select></div>
+          <div><label className="label">Location</label><select className="input" value={form.location} onChange={set('location')}>{locations.map((l) => <option key={l}>{l}</option>)}</select></div>
+        </div>
+        <div><label className="label">Designation</label><input className="input" value={form.designation} onChange={set('designation')} placeholder={ROLES[form.role].label} /></div>
+        <div>
+          <label className="label">Starting password *</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input className="input font-mono pr-9" type={show ? 'text' : 'password'} value={form.password} onChange={set('password')} placeholder="At least 8 characters, letters and numbers" autoComplete="new-password" />
+              <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-faint hover:text-navy" aria-label="Toggle password visibility">
+                {show ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <button type="button" className="btn-secondary" onClick={() => setForm((f) => ({ ...f, password: makePassword() }))}><RefreshCw size={13} /> Generate</button>
+          </div>
+          <p className="mt-1 text-[11px] text-muted">Share it with the person; they sign in with the username above.</p>
+        </div>
+        {err && <p className="text-[12px] text-[#DC2626]">{err}</p>}
+      </form>
+    </Modal>
   )
 }

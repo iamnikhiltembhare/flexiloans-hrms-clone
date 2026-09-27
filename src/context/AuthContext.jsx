@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { authenticate } from '../data/accounts.js'
 import { API_MODE, api, session, setUnauthorizedHandler } from '../lib/api.js'
+import { authenticateCreated } from '../lib/localAccounts.js'
 
 const AuthContext = createContext(null)
 const USER_KEY = 'fl_hrms_v1:user'
@@ -25,7 +26,7 @@ export function AuthProvider({ children }) {
   // Resolves to '' on success or to the message to show on the form.
   const login = useCallback(async (username, password) => {
     if (!API_MODE) {
-      const u = authenticate(username, password)
+      const u = authenticate(username, password) || authenticateCreated(username, password)
       if (!u) return 'That username and password do not match an account.'
       setUser(u)
       saveUser(u)

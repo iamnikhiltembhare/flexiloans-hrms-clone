@@ -10,6 +10,21 @@ import { PERMS } from '../data/accounts.js'
 
 export const CANDIDATE_STAGES = ['Shortlisted', 'Tech Screen', 'HR Round', 'Final Round', 'Offer Rolled', 'Hired']
 
+// Which team owns each helpdesk category. HR works its own tickets; tickets
+// for other departments are approved or rejected by a super admin.
+export const TICKET_DESKS = {
+  Payroll: { desk: 'Payroll Desk', team: 'HR' },
+  'HR Records': { desk: 'HR Ops', team: 'HR' },
+  Benefits: { desk: 'Benefits Desk', team: 'HR' },
+  IT: { desk: 'IT Helpdesk', team: 'IT' },
+  Finance: { desk: 'Finance Desk', team: 'Finance' },
+}
+export const TICKET_STATUSES = ['Open', 'In Progress', 'Approved', 'Rejected', 'Resolved']
+/** True when a ticket's category belongs to a department other than HR. */
+export const needsAdminApproval = (category) => (TICKET_DESKS[category]?.team || 'HR') !== 'HR'
+/** Closed tickets take no further action except reopening. */
+export const ticketClosed = (status) => status === 'Resolved' || status === 'Rejected'
+
 // Which stored collection each action changes, and whether that collection
 // is shared by the organisation or private to the signed-in person.
 export const COLLECTIONS = {
@@ -52,8 +67,12 @@ const REDUCERS = {
 
   'ticket.add': (list, { ticket }) => ({ value: [ticket, ...list], result: ticket.id }),
 
-  'ticket.setStatus': (list, { id, status }) => ({
-    value: list.map((t) => (t.id === id ? { ...t, status, sla: status === 'Resolved' ? 'Met' : t.sla } : t)),
+  'ticket.setStatus': (list, { id, status, by }) => ({
+    value: list.map((t) => (t.id !== id ? t : {
+      ...t, status,
+      sla: status === 'Resolved' || status === 'Approved' ? 'Met' : t.sla,
+      ...(status === 'Approved' || status === 'Rejected' ? { decidedBy: by } : {}),
+    })),
   }),
 
   'announcement.add': (list, { announcement }) => ({ value: [announcement, ...list] }),
@@ -73,9 +92,18 @@ const REDUCERS = {
 
   'requisition.add': (list, { requisition }) => ({ value: [requisition, ...list], result: requisition.id }),
 
-  'punch.toggle': (p, { now }) => {
-    if (p.outAt || !p.inAt) return { value: { inAt: now, outAt: null }, result: { action: 'in', now } }
-    return { value: { ...p, outAt: now }, result: { action: 'out', now } }
+  // Punches are kept per day: the first punch-in and the last punch-out.
+  // A punch left open from an earlier day does not carry over.
+  'punch.toggle': (p, { now, date }) => {
+    const history = { ...(p.history || {}) }
+    const day = history[date] || {}
+    const stale = p.date && p.date !== date
+    if (stale || p.outAt || !p.inAt) {
+      history[date] = { in: day.in || now, out: day.out || null }
+      return { value: { inAt: now, outAt: null, date, history }, result: { action: 'in', now } }
+    }
+    history[date] = { in: day.in || p.inAt, out: now }
+    return { value: { ...p, outAt: now, date, history }, result: { action: 'out', now } }
   },
 
   'notification.add': (list, { notification }) => ({ value: [notification, ...list] }),
@@ -98,6 +126,13 @@ export function applyAction(current, { type, payload }) {
 // --- id and time helpers used when building an action -------------------
 
 export const today = () => new Date().toISOString().slice(0, 10)
+
+/** Local calendar date, YYYY-MM-DD (not UTC, so late evening stays "today"). */
+export const localDate = (d = new Date()) =>
+  d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+
+/** Punched in right now? A punch without a date is the seed data's "today". */
+export const isPunchedIn = (p) => Boolean(p?.inAt) && !p?.outAt && (!p?.date || p.date === localDate())
 
 export const clockTime = () =>
   new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })

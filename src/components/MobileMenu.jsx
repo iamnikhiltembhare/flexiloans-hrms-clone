@@ -9,6 +9,7 @@ import { ThemeSwitch } from './ThemeToggle.jsx'
 import { navFor } from './navItems.js'
 import { useBackHandler, haptic } from '../lib/native.js'
 import { BRAND } from '../lib/brand.js'
+import { isPunchedIn, localDate } from '../lib/actions.js'
 
 // The phone and tablet main menu: a sheet with the signed-in person, the
 // appearance switch, and every screen as a colour-coded tile.
@@ -27,7 +28,8 @@ export default function MobileMenu({ open, onClose }) {
 
   if (!open) return null
   const groups = navFor(can)
-  const punchedIn = Boolean(punch?.inAt) && !punch?.outAt
+  const punchedIn = isPunchedIn(punch)
+  const todayPunch = punch?.history?.[localDate()]
   let tileIndex = 0
 
   const go = (to) => { haptic(); onClose(); navigate(to) }
@@ -59,7 +61,7 @@ export default function MobileMenu({ open, onClose }) {
             <div className="mt-3.5 flex items-center gap-2 text-[11.5px] text-white/85">
               <span className={'h-2 w-2 rounded-full ' + (punchedIn ? 'bg-[#4ADE80] shadow-[0_0_0_3px_rgba(74,222,128,.25)]' : 'bg-white/50')} />
               <Clock size={12} className="opacity-80" />
-              {punchedIn ? 'Punched in at ' + punch.inAt : punch?.outAt ? 'Punched out at ' + punch.outAt : 'Not punched in yet'}
+              {punchedIn ? 'Punched in at ' + (todayPunch?.in || punch.inAt) : todayPunch?.out ? 'Punched out at ' + todayPunch.out : 'Not punched in yet'}
             </div>
           </section>
 
