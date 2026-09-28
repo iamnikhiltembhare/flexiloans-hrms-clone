@@ -3,7 +3,7 @@
 // configured (and always in the offline demo). The same tools run either
 // way, so permissions and confirmations behave identically.
 
-import { leaveBalances } from '../../data/mock.js'
+import { LEAVE_TYPES } from '../hr/leave.js'
 import { PERMS } from '../../data/accounts.js'
 import { TOOLS, runTool, findPeople, sensitiveTopic, SENSITIVE_REPLY } from './tools.js'
 
@@ -112,7 +112,7 @@ export function parseIntent(raw, ctx, memory = {}) {
   if (has(t, /\b(apply|take|book|request)\b.*\bleave\b|\bleave\b.*\b(from|on)\b/) && !has(t, /\b(pending|show|list|balance|approv)\w*/)) {
     const dates = datesIn(text, ctx.today)
     if (!dates.length) return { reply: 'Which dates? For example "apply for casual leave from 12 Oct to 13 Oct".' }
-    const type = leaveBalances.map((l) => l.type).find((lt) => t.includes(lt.toLowerCase().split(' ')[0])) || (has(t, /\bsick\b|\bcasual\b/) ? 'Casual Or Sick Leave' : leaveBalances[0].type)
+    const type = LEAVE_TYPES.find((lt) => t.includes(lt.toLowerCase().split(' ')[0])) || (has(t, /\bsick\b|\bcasual\b/) ? 'Casual Or Sick Leave' : LEAVE_TYPES[0])
     const reason = text.match(/\b(?:because(?: of)?|due to|reason:?)\s+(.+)$/i)?.[1]
     return { tool: 'propose_leave_application', input: { type, from: dates[0], to: dates[1] || dates[0], reason: reason && !datesIn(reason, ctx.today).length ? reason : undefined } }
   }
@@ -214,7 +214,7 @@ export function describe(tool, result, input = {}) {
       return 'On ' + s.date + (input.department ? ' in ' + input.department : '') + ': ' + s.present + ' present (' + s.late + ' late), ' + s.absent + ' absent, ' + s.on_leave + ' on leave' + (s.not_in_yet ? ', ' + s.not_in_yet + ' not in yet' : '') + '.' + (d.absent.length ? ' Absent: ' + d.absent.slice(0, 8).join(', ') + (d.absent.length > 8 ? ' and others' : '') + '.' : '')
     }
     case 'attendance_report': return 'Attendance for ' + d.period + ': ' + d.employees + ' employee' + (d.employees === 1 ? '' : 's') + ', ' + d.totals.present + ' present days, ' + d.totals.late + ' late arrivals, ' + d.totals.absent + ' absences and ' + d.totals.leave + ' leave days. Download the full table below.'
-    case 'leave_balance': return d.employee + ' has ' + d.balances.map((b) => b.balance + ' ' + b.type).slice(0, 3).join(', ') + ' left, among others.'
+    case 'leave_balance': return d.employee + ' has ' + d.balances.filter((b) => b.balance !== 'no limit').slice(0, 3).map((b) => b.balance + ' days of ' + b.type).join(', ') + ' left' + (d.balances.some((b) => b.pending) ? ', with some requests pending' : '') + '.'
     case 'list_leave_requests': return d.count === 0 ? 'There are no matching leave requests.' : 'There ' + (d.count === 1 ? 'is 1 request' : 'are ' + d.count + ' requests') + ': ' + d.requests.slice(0, 5).map((r, i) => (i + 1) + '. ' + r.employee + ' - ' + r.days + ' day' + (r.days > 1 ? 's' : '') + ' (' + r.from + (r.to !== r.from ? ' to ' + r.to : '') + ')').join('; ') + '.' + (d.can_decide && d.requests.some((r) => r.status === 'Pending') ? ' Would you like to approve or reject any of them?' : '')
     case 'pending_tasks': return d.items.length ? 'Waiting for you: ' + d.items.map((i) => i.count + ' ' + i.task.toLowerCase()).join('; ') + '.' : 'Nothing is waiting for you right now.'
     case 'list_tickets': return d.count === 0 ? 'No tickets match.' : d.count + ' ticket' + (d.count === 1 ? '' : 's') + ': ' + d.tickets.slice(0, 5).map((x) => x.id + ' ' + x.subject + ' (' + x.status + ')').join('; ') + '.'

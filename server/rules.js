@@ -3,6 +3,8 @@
 // authoritative (who raised it, its status, the date) is set by the server.
 
 import { PERMS } from '../src/data/accounts.js'
+import { checkBalance } from '../src/lib/hr/leave.js'
+import { computeRun, monthLabel } from '../src/lib/hr/payroll.js'
 import { CANDIDATE_STAGES, REGULARISATION_TYPES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
 
 export class HttpError extends Error {
@@ -29,7 +31,7 @@ const find = (list, id, what) => list.find((x) => x.id === id) || bad(what + ' '
  * Validate an action against the collection it will change.
  * Returns the sanitised payload to hand to applyAction().
  */
-export function prepare(type, payload, actor, current) {
+export function prepare(type, payload, actor, current, extra = {}) {
   const p = payload && typeof payload === 'object' ? payload : {}
 
   switch (type) {
@@ -56,10 +58,13 @@ export function prepare(type, payload, actor, current) {
       if (to < from) bad('The end date cannot be before the start date')
       const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1
       if (days > 60) bad('A single request cannot exceed 60 days')
+      const type = required(r.type, 'Leave type', 40)
+      const balance = checkBalance(actor.id, type, days, current, Number(from.slice(0, 4)))
+      if (!balance.ok) bad(balance.message)
       return { request: {
         id: uniqueId(current, r.id, /^LV-\d+$/, 'LV-', 2041),
         employee: actor.name, empId: actor.id,
-        type: required(r.type, 'Leave type', 40),
+        type,
         from, to, days,
         reason: str(r.reason, 300) || 'Personal',
         status: 'Pending', appliedOn: today(),
@@ -142,7 +147,25 @@ export function prepare(type, payload, actor, current) {
       const now = /^\d{1,2}:\d{2}\s?(am|pm)$/i.test(p.now) ? p.now : bad('Invalid time')
       const date = /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : bad('Invalid date')
       if (Math.abs(Date.parse(date) - Date.now()) > 36 * 3600 * 1000) bad('That date is not today')
-      return { now, date }
+      return { now, date, mode: p.mode === 'Remote' ? 'Remote' : 'Office' }
+    }
+
+    case 'payroll.run': {
+      const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(p.month) ? p.month : bad('Pick a month (YYYY-MM)')
+      const now = new Date()
+      const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+      if (month > thisMonth) bad('You cannot run payroll for a future month')
+      if (current.runs.some((r) => r.month === month && r.status === 'Paid')) bad(monthLabel(month) + ' payroll is already paid and locked')
+      const bonusPercent = Math.min(100, Math.max(0, Number(p.bonusPercent) || 0))
+      const otMultiplier = [1, 1.5, 2].includes(Number(p.otMultiplier)) ? Number(p.otMultiplier) : 1.5
+      // Amounts are always recomputed here; the app's own figures are ignored.
+      return computeRun(extra.employees || [], month, { leaveRequests: extra.leaveRequests || [] }, { bonusPercent, otMultiplier }, actor.name)
+    }
+
+    case 'payroll.pay': {
+      const run = current.runs.find((r) => r.month === p.month) || bad('No payroll run for ' + p.month)
+      if (run.status === 'Paid') bad(monthLabel(run.month) + ' is already paid')
+      return { month: run.month, paidAt: new Date().toISOString(), by: actor.name }
     }
 
     case 'regularisation.add': {
@@ -209,6 +232,15 @@ export function visibleTo(actor, collection, value) {
   switch (collection) {
     case 'leaveRequests':
     case 'regularisations': return can(PERMS.HR_PEOPLE) ? value : value.filter((r) => r.empId === actor.id)
+    case 'payroll': {
+      if (can(PERMS.HR_PEOPLE)) return value
+      // Employees see only their own payslips, and only once released.
+      const paid = new Set(value.runs.filter((r) => r.status === 'Paid').map((r) => r.month))
+      return {
+        runs: value.runs.filter((r) => paid.has(r.month)).map(({ id, month, status, paidAt }) => ({ id, month, status, paidAt })),
+        payslips: value.payslips.filter((x) => x.empId === actor.id && paid.has(x.month)),
+      }
+    }
     case 'tickets': return can(PERMS.HR_DESK) ? value : value.filter((t) => t.raisedById === actor.id || t.raisedBy === actor.name)
     case 'candidates':
     case 'requisitions': return can(PERMS.HR_HIRING) ? value : []
@@ -239,6 +271,8 @@ export function fanOut(type, payload, actor, before) {
       const t = before.find((x) => x.id === payload.id)
       return [{ to: (u) => u.id === t.raisedById && u.username !== actor.username, notification: { title: t.id + ' is now ' + payload.status, detail: t.subject, to: '/', kind: 'info' } }]
     }
+    case 'payroll.pay':
+      return [{ to: (u) => u.username !== actor.username, notification: { title: 'Payslip for ' + monthLabel(payload.month) + ' is ready', detail: 'Salary has been processed', to: '/payroll', kind: 'info' } }]
     case 'regularisation.add': {
       const r = payload.request
       return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: 'Regularisation request from ' + r.employee, detail: r.type + ' on ' + r.date, to: '/attendance', kind: 'task' } }]

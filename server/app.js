@@ -161,10 +161,12 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     let result
     let clean
     let before
+    // Collections the action reads besides the one it changes (unfiltered).
+    const extra = Object.fromEntries(await Promise.all((spec.needs || []).map(async (c) => [c, await read(c, actor.username)])))
     await store.update(keyFor(spec.collection, actor.username), (cur) => {
       before = cur ?? clone(SEED[spec.collection])
       // Validate against the freshest copy, inside the atomic update.
-      clean = prepare(type, payload, actor, before)
+      clean = prepare(type, payload, actor, before, extra)
       const out = applyAction(before, { type, payload: clean })
       result = out.result
       return out.value

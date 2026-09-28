@@ -4,12 +4,17 @@ import { PageHeader, Card, Badge, Avatar, Field, Tabs, Table, statusTone } from 
 import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import Modal from '../components/Modal.jsx'
-import { leaveBalances, payslips, INR } from '../data/mock.js'
+import { INR } from '../data/mock.js'
+import { balancesFor } from '../lib/hr/leave.js'
+import { monthLabel } from '../lib/hr/payroll.js'
 import { BRAND } from '../lib/brand.js'
 
 export default function Profile() {
   const { user } = useAuth()
-  const { documents, toast, notify } = useApp()
+  const { documents, toast, notify, leaveRequests, payroll } = useApp()
+  const leaveBalances = balancesFor(user.id, leaveRequests).map((b) => ({ ...b, total: b.granted }))
+  const payslips = [...(payroll?.payslips || [])].filter((p) => p.empId === user.id).sort((a, b) => b.month.localeCompare(a.month))
+    .map((p) => ({ ...p, month: monthLabel(p.month), deductions: p.totalDeductions, status: 'Paid' }))
   const [tab, setTab] = useState('Personal')
   const [open, setOpen] = useState(false)
   const [req, setReq] = useState({ field: 'Personal mobile', value: '', note: '' })

@@ -12,8 +12,9 @@
 // person presses Confirm, through the same server validation as the screens.
 
 import { PERMS } from '../../data/accounts.js'
-import { departments, locations, leaveBalances, headcountTrend } from '../../data/mock.js'
-import { companyHolidays } from '../../data/holidays.js'
+import { departments, locations, headcountTrend } from '../../data/mock.js'
+import { balancesFor, checkBalance, LEAVE_TYPES } from '../hr/leave.js'
+import { employeeDay as baseDay, holidaySet } from '../hr/attendance.js'
 import { TICKET_DESKS, needsAdminApproval, ticketClosed, CANDIDATE_STAGES } from '../actions.js'
 
 // --- helpers ------------------------------------------------------------
@@ -23,7 +24,6 @@ const can = (ctx, perm) => ctx.actor.perms.includes(perm)
 const pad = (n) => String(n).padStart(2, '0')
 const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
 const parseISO = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
-const hhmm = (m) => pad(Math.floor(m / 60)) + ':' + pad(m % 60)
 
 class ToolError extends Error {}
 const deny = (msg) => { throw new ToolError(msg) }
@@ -62,38 +62,10 @@ function monthRange(spec, today) {
   return [new Date(t.getFullYear(), t.getMonth(), 1), t]
 }
 
-// --- attendance model ---------------------------------------------------
-// The directory has no punch history for most people, so each day is derived
-// deterministically from the employee id and date (the same answer every
-// time), with approved leave and holidays applied. A person's own real
-// punches, when known, replace the derived day.
-
-const rnd = (seed) => { let h = 2166136261; for (const c of seed) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) } return ((h >>> 0) % 10000) / 10000 }
-const holidaySet = new Set(companyHolidays.map((h) => h.date))
-
-export function employeeDay(emp, date, ctx) {
-  const d = parseISO(date)
-  const dow = d.getDay()
-  if (holidaySet.has(date)) return { status: 'Holiday' }
-  if (dow === 0 || dow === 6) return { status: 'Weekly off' }
-  const onLeave = (ctx.state.leaveRequests || []).some((r) => r.empId === emp.id && r.status === 'Approved' && r.from <= date && r.to >= date)
-  if (onLeave) return { status: 'On leave' }
-  if (emp.id === ctx.actor.id) {
-    const real = ctx.state.punch?.history?.[date]
-    if (real?.in) return { status: 'Present', firstIn: real.in, lastOut: real.out || null, real: true }
-  }
-  const r = rnd(emp.id + date)
-  if (r < 0.05) return { status: 'Absent' }
-  const inMin = 575 + Math.floor(rnd(date + emp.id) * 55)
-  const outMin = inMin + 530 + Math.floor(rnd(emp.id + date + 'o') * 80)
-  const isToday = date === ctx.today
-  if (isToday && ctx.nowMin != null && ctx.nowMin < inMin) return { status: 'Not in yet' }
-  return {
-    status: 'Present', late: inMin > 615, firstIn: hhmm(inMin),
-    lastOut: isToday && ctx.nowMin != null && ctx.nowMin < outMin ? null : hhmm(outMin),
-    hours: +(((isToday && ctx.nowMin != null ? Math.min(outMin, ctx.nowMin) : outMin) - inMin) / 60).toFixed(1),
-  }
-}
+// Attendance comes from the shared model (src/lib/hr/attendance.js); the
+// signed-in person's real punches replace their derived days.
+const dayCtx = (ctx) => ({ leaveRequests: ctx.state.leaveRequests, today: ctx.today, nowMin: ctx.nowMin, self: { id: ctx.actor.id, punch: ctx.state.punch } })
+export const employeeDay = (emp, date, ctx) => baseDay(emp, date, dayCtx(ctx))
 
 // --- tool definitions -----------------------------------------------------
 // `schema` is the JSON Schema Claude sees; `run(input, ctx)` does the work.
@@ -212,15 +184,17 @@ export const TOOLS = {
     description: 'Leave balances by leave type. Anyone can see their own; HR can check another employee\'s.',
     schema: obj({ employee: str('Employee name or id; omit for yourself') }),
     run(input, ctx) {
-      let who = ctx.actor.name
+      let who = ctx.actor
       if (input.employee && findPeople([ctx.actor], input.employee).length === 0) {
         if (!can(ctx, PERMS.HR_PEOPLE)) deny('You can only see your own leave balance.')
         const found = findPeople(ctx.state.employees, input.employee)
         if (!found.length) deny('No employee matches "' + input.employee + '".')
-        who = found[0].name
+        who = found[0]
       }
-      const rows = leaveBalances.map((l) => ({ type: l.type, granted: l.granted, used: l.used, balance: l.balance }))
-      return { data: { employee: who, balances: rows }, card: { kind: 'table', title: 'Leave balance - ' + who, columns: ['type', 'granted', 'used', 'balance'], rows } }
+      const rows = balancesFor(who.id, ctx.state.leaveRequests, Number(ctx.today.slice(0, 4)))
+        .map((l) => ({ type: l.type, granted: l.unlimited ? 'no limit' : l.granted, used: l.used, pending: l.pending, balance: l.unlimited ? 'no limit' : l.balance }))
+      who = who.name
+      return { data: { employee: who, balances: rows }, card: { kind: 'table', title: 'Leave balance - ' + who, columns: ['type', 'granted', 'used', 'pending', 'balance'], rows } }
     },
   },
 
@@ -435,12 +409,14 @@ export const TOOLS = {
   propose_leave_application: {
     write: true,
     description: 'Prepare a leave application for the signed-in person. Does not act - they must confirm. Dates are YYYY-MM-DD.',
-    schema: obj({ type: { type: 'string', enum: leaveBalances.map((l) => l.type) }, from: str('Start date YYYY-MM-DD'), to: str('End date YYYY-MM-DD'), reason: str('Reason') }, ['type', 'from', 'to']),
+    schema: obj({ type: { type: 'string', enum: LEAVE_TYPES }, from: str('Start date YYYY-MM-DD'), to: str('End date YYYY-MM-DD'), reason: str('Reason') }, ['type', 'from', 'to']),
     run(input, ctx) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(input.from) || !/^\d{4}-\d{2}-\d{2}$/.test(input.to)) deny('I need the dates as YYYY-MM-DD.')
       if (input.to < input.from) deny('The end date is before the start date.')
       const days = Math.round((parseISO(input.to) - parseISO(input.from)) / 86400000) + 1
-      const type = pick(leaveBalances.map((l) => l.type), input.type) || leaveBalances[0].type
+      const type = pick(LEAVE_TYPES, input.type) || LEAVE_TYPES[0]
+      const balance = checkBalance(ctx.actor.id, type, days, ctx.state.leaveRequests, Number(input.from.slice(0, 4)))
+      if (!balance.ok) deny(balance.message)
       return proposal({ type: 'leave.add', payload: { request: { type, from: input.from, to: input.to, days, reason: input.reason || 'Personal', employee: ctx.actor.name, empId: ctx.actor.id } },
         summary: 'Apply for ' + days + ' day' + (days > 1 ? 's' : '') + ' of ' + type + ' (' + input.from + (input.to !== input.from ? ' to ' + input.to : '') + ')', detail: 'Goes to HR for approval.', tone: 'blue' })
     },

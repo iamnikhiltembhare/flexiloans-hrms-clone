@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, LayoutGrid, List, Clock, Timer, AlertTriangle, LogIn, LogOut, CalendarCheck, PencilLine } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LayoutGrid, List, Clock, Timer, AlertTriangle, LogIn, LogOut, CalendarCheck, PencilLine, Home } from 'lucide-react'
 import { Card, StatCard, Badge, Table } from '../components/ui.jsx'
 import { buildMonth, monthSummary, SHIFT, SHIFT_START, SHIFT_END } from '../data/attendance.js'
-import { companyHolidays, MONTHS, WEEKDAYS } from '../data/holidays.js'
+import { MONTHS, WEEKDAYS } from '../data/holidays.js'
 import { useApp } from '../context/DataContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { localDate, isPunchedIn } from '../lib/actions.js'
@@ -85,6 +85,7 @@ function DayCell({ r, active, reg, onPick, onRegularise }) {
           <span className="flex items-center gap-1 font-mono text-[9.5px] sm:text-[11px] leading-none">
             <span className={'h-1.5 w-1.5 shrink-0 rounded-full ' + (r.late ? 'bg-[#D97706]' : 'bg-[#16A34A]')} />
             <span className={r.late ? 'text-[#B45309]' : 'text-body'}>{r.firstIn}</span>
+            {r.mode === 'Remote' && <Home size={10} className="text-[#7C3AED] shrink-0" aria-label="Work from home" />}
           </span>
           <span className="flex items-center gap-1 font-mono text-[9.5px] sm:text-[11px] leading-none">
             <span className={'h-1.5 w-1.5 shrink-0 rounded-full ' + (r.working ? 'bg-cyan animate-pulse' : 'bg-[#DC2626]/80')} />
@@ -105,11 +106,11 @@ function DayCell({ r, active, reg, onPick, onRegularise }) {
 
 const LEGEND = [
   ['bg-[#16A34A]', 'On time'], ['bg-[#D97706]', 'Late (after 10:15)'], ['bg-cyan', 'Working now'],
-  ['bg-[#DC2626]', 'Absent'], ['bg-[#7C3AED]', 'Leave'], ['bg-[#0097B2]', 'Holiday'],
+  ['bg-[#DC2626]', 'Absent'], ['bg-[#7C3AED]', 'Leave or from home'], ['bg-[#0097B2]', 'Holiday'],
 ]
 
 export default function AttendanceInfo({ onRegularise = () => {} }) {
-  const { punch, regularisations } = useApp()
+  const { punch, regularisations, employees, leaveRequests } = useApp()
   const { user } = useAuth()
   const todayISO = localDate()
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
@@ -142,8 +143,8 @@ export default function AttendanceInfo({ onRegularise = () => {} }) {
     return h
   }, [punch, todayISO, myRegs])
 
-  const holidayDates = companyHolidays.map((h) => h.date)
-  const rows = useMemo(() => buildMonth(cursor.y, cursor.m, holidayDates, history, todayISO, nowMin), [cursor, history, todayISO, nowMin]) // eslint-disable-line react-hooks/exhaustive-deps
+  const me = useMemo(() => employees.find((e) => e.id === user?.id) || { id: user?.id }, [employees, user])
+  const rows = useMemo(() => buildMonth({ emp: me, year: cursor.y, month: cursor.m, history, todayISO, nowMin, leaveRequests }), [me, cursor, history, todayISO, nowMin, leaveRequests])
   const summary = useMemo(() => monthSummary(rows), [rows])
   const day = rows.find((r) => r.date === selected) || rows.find((r) => r.isToday) || rows.find((r) => r.status === 'P')
 
@@ -160,7 +161,7 @@ export default function AttendanceInfo({ onRegularise = () => {} }) {
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Avg work hrs" value={summary.avgWork} hint="first in to last out" icon={Clock} tone="cyan" />
-        <StatCard label="Avg hrs in shift" value={summary.avgActual} hint={'within ' + SHIFT.window} icon={Timer} tone="blue" />
+        <StatCard label="Overtime" value={summary.overtime} hint={'beyond the 9-hour shift - ' + summary.remote + ' day' + (summary.remote === 1 ? '' : 's') + ' from home'} icon={Timer} tone="blue" />
         <StatCard label="Late arrivals" value={rows.filter((r) => r.late).length} hint="punched in after 10:15" icon={AlertTriangle} tone={rows.some((r) => r.late) ? 'amber' : 'green'} />
         <StatCard label="Days present" value={summary.present} hint={`${summary.leave} leave, ${summary.penaltyDays} absent`} icon={CalendarCheck} tone="green" />
       </div>
@@ -262,8 +263,9 @@ export default function AttendanceInfo({ onRegularise = () => {} }) {
                       <div className="flex justify-between text-[9.5px] font-mono text-faint mb-1"><span>08:00</span><span>12:00</span><span>16:00</span><span>22:00</span></div>
                       <TimeBar r={day} tall />
                       <p className="mt-1.5 text-[11px] text-muted">
+                        {day.mode === 'Remote' && <span className="mr-1.5 inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.12)] px-1.5 py-px text-[10.5px] font-semibold text-[#7C3AED]"><Home size={10} /> From home</span>}
                         <span className="font-semibold text-navy">{duration(day.totalWork)}</span> {day.working ? 'so far' : 'worked'}
-                        {day.excess !== '00:00' && <> - <span className="text-[#16A34A] font-medium">{duration(day.excess)} over</span></>}
+                        {day.excess !== '00:00' && <> - <span className="text-[#16A34A] font-medium">{duration(day.excess)} overtime</span></>}
                         {day.shortfall !== '00:00' && !day.working && <> - <span className="text-[#B45309] font-medium">{duration(day.shortfall)} short</span></>}
                       </p>
                     </div>

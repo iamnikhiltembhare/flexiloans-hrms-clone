@@ -7,6 +7,7 @@ import { ALL_ACCOUNTS, ROLES } from '../data/accounts.js'
 import { BRAND } from '../lib/brand.js'
 import { createdAccounts, addCreatedAccount } from '../lib/localAccounts.js'
 import { answerWithRules } from '../lib/assistant/rules.js'
+import { computeRun } from '../lib/hr/payroll.js'
 import { useAuth } from './AuthContext.jsx'
 import ToastStack from '../components/Toast.jsx'
 
@@ -19,7 +20,7 @@ const DataContext = createContext(null)
 const NAMES = Object.keys(COLLECTIONS)
 const POLL_MS = 30000
 
-const EMPTY = { ...Object.fromEntries(NAMES.map((n) => [n, []])), punch: { inAt: null, outAt: null } }
+const EMPTY = { ...Object.fromEntries(NAMES.map((n) => [n, []])), punch: { inAt: null, outAt: null }, payroll: { runs: [], payslips: [] } }
 const loadLocal = () => Object.fromEntries(NAMES.map((n) => [n, readStored(n, SEED[n])]))
 
 let seq = 100
@@ -54,7 +55,7 @@ export function DataProvider({ children }) {
 
   // --- server sync ---------------------------------------------------------
   const pending = useRef(0)   // actions in flight; polls must not undo them
-  const latest = useRef(0)    // only the newest action response is applied
+  const stale = useRef(false) // a reply was skipped; reload once all settle
 
   const refresh = useCallback(async () => {
     if (!API_MODE) return true
@@ -81,21 +82,26 @@ export function DataProvider({ children }) {
   }, [user, refresh, commit])
 
   const dispatch = useCallback((type, payload) => {
-    const { collection } = ACTIONS[type]
+    const { collection, localOnly = [] } = ACTIONS[type]
     const { value, result } = applyAction(stateRef.current[collection], { type, payload })
     commit({ ...stateRef.current, [collection]: value })
 
     if (API_MODE) {
-      const mine = ++latest.current
       pending.current++
-      api('/api/actions', { method: 'POST', body: { type, payload } })
-        .then(({ state: server }) => { if (mine === latest.current) commit(server) })
+      const sent = localOnly.length ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => !localOnly.includes(k))) : payload
+      // Concurrent replies can arrive out of order, and a quick one may show
+      // the server from before a slower action landed. Use a reply only when
+      // it is the only one in flight; otherwise reload once all have settled.
+      api('/api/actions', { method: 'POST', body: { type, payload: sent } })
+        .then(({ state: server }) => { if (pending.current === 1 && !stale.current) commit(server); else stale.current = true })
         .catch((err) => {
           toast('Not saved', err.message, 'error')
-          pending.current = 0
-          refresh()
+          stale.current = true
         })
-        .finally(() => { pending.current = Math.max(0, pending.current - 1) })
+        .finally(() => {
+          pending.current = Math.max(0, pending.current - 1)
+          if (pending.current === 0 && stale.current) { stale.current = false; refresh() }
+        })
     }
     return result
   }, [commit, refresh, toast])
@@ -200,7 +206,15 @@ export function DataProvider({ children }) {
     applicants: 0, stage: 'Sourcing', owner: me, posted: today(), ...r,
   } }), [dispatch, me])
 
-  const punchToggle = useCallback(() => dispatch('punch.toggle', { now: clockTime(), date: localDate() }), [dispatch])
+  const punchToggle = useCallback((mode = 'Office') => dispatch('punch.toggle', { now: clockTime(), date: localDate(), mode }), [dispatch])
+
+  // Payroll: the app computes the run for an instant preview; the server
+  // recomputes every figure itself before saving.
+  const runPayroll = useCallback((month, opts = {}) => {
+    const { run, payslips } = computeRun(stateRef.current.employees, month, { leaveRequests: stateRef.current.leaveRequests }, opts, me)
+    return dispatch('payroll.run', { month, ...opts, run, payslips })
+  }, [dispatch, me])
+  const payPayroll = useCallback((month) => dispatch('payroll.pay', { month, paidAt: new Date().toISOString(), by: me }), [dispatch, me])
 
   const addRegularisation = useCallback((r) => dispatch('regularisation.add', { request: {
     id: nextSerial(stateRef.current.regularisations, 'RG-', 1000),
@@ -255,12 +269,12 @@ export function DataProvider({ children }) {
     addAnnouncement, addDocument, advanceCandidate, addRequisition,
     notify, markRead, markAllRead, clearNotifications,
     unread: state.notifications.filter((n) => !n.read).length,
-    toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    toast, punchToggle, runPayroll, payPayroll, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
     askAssistant, loadChat, saveChat, clearChat, runAction, listAudit,
     ready, loadError, refresh, online: API_MODE,
   }), [state, addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
     addAnnouncement, addDocument, advanceCandidate, addRequisition, notify, markRead,
-    markAllRead, clearNotifications, toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    markAllRead, clearNotifications, toast, punchToggle, runPayroll, payPayroll, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
     askAssistant, loadChat, saveChat, clearChat, runAction, listAudit, ready, loadError, refresh])
 
   return (

@@ -7,7 +7,9 @@ import { PageHeader, Card, Badge } from '../../components/ui.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useApp } from '../../context/DataContext.jsx'
 import { holidayList, prettyDate, weekdayOf, OPTIONAL_HOLIDAY_QUOTA } from '../../data/holidays.js'
-import { leaveBalances, payslips, INR } from '../../data/mock.js'
+import { INR } from '../../data/mock.js'
+import { balancesFor } from '../../lib/hr/leave.js'
+import { monthLabel } from '../../lib/hr/payroll.js'
 
 const QUOTES = [
   ['Either you run the day, or the day runs you.', 'Jim Rohn'],
@@ -34,7 +36,9 @@ function EmptyCard({ title, icon: Icon, message, tone = 'cyan', action }) {
 
 export default function EmployeeDashboard() {
   const { user } = useAuth()
-  const { announcements, leaveRequests } = useApp()
+  const { announcements, leaveRequests, payroll } = useApp()
+  const leaveBalances = balancesFor(user.id, leaveRequests)
+  const lastPayslip = [...(payroll?.payslips || [])].filter((p) => p.empId === user.id).sort((a, b) => b.month.localeCompare(a.month))[0]
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
@@ -156,9 +160,9 @@ export default function EmployeeDashboard() {
 
         {/* Last payslip */}
         <Card title="Last Settled Payslip" bodyClass="p-4">
-          <p className="text-[11px] text-muted">{payslips.find((p) => p.status === 'Paid').month}</p>
+          <p className="text-[11px] text-muted">{lastPayslip ? monthLabel(lastPayslip.month) : 'No payslip released yet'}</p>
           <p className="text-2xl font-semibold text-navy font-mono mt-1">
-            {INR(payslips.find((p) => p.status === 'Paid').net)}
+            {lastPayslip ? INR(lastPayslip.net) : '--'}
           </p>
           <Link to="/payroll" className="btn-secondary w-full justify-center mt-3">View payslips</Link>
         </Card>

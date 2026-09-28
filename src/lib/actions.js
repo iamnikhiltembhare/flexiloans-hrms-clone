@@ -38,6 +38,7 @@ export const COLLECTIONS = {
   candidates: 'shared',
   requisitions: 'shared',
   regularisations: 'shared',
+  payroll: 'shared',
   documents: 'personal',
   notifications: 'personal',
   punch: 'personal',
@@ -56,6 +57,11 @@ export const ACTIONS = {
   'punch.toggle': { collection: 'punch', perm: PERMS.SELF },
   'regularisation.add': { collection: 'regularisations', perm: PERMS.SELF },
   'regularisation.decide': { collection: 'regularisations', perm: PERMS.HR_PEOPLE },
+  // `needs`: other collections the server reads to validate or compute.
+  // `localOnly`: payload keys used for the instant on-screen update but never
+  // sent to the server, which computes them itself.
+  'payroll.run': { collection: 'payroll', perm: PERMS.HR_PEOPLE, needs: ['employees', 'leaveRequests'], localOnly: ['run', 'payslips'] },
+  'payroll.pay': { collection: 'payroll', perm: PERMS.HR_PEOPLE },
   'notification.add': { collection: 'notifications', perm: PERMS.SELF },
   'notification.read': { collection: 'notifications', perm: PERMS.SELF },
   'notification.readAll': { collection: 'notifications', perm: PERMS.SELF },
@@ -100,17 +106,25 @@ const REDUCERS = {
 
   // Punches are kept per day: the first punch-in and the last punch-out.
   // A punch left open from an earlier day does not carry over.
-  'punch.toggle': (p, { now, date }) => {
+  'punch.toggle': (p, { now, date, mode = 'Office' }) => {
     const history = { ...(p.history || {}) }
     const day = history[date] || {}
     const stale = p.date && p.date !== date
     if (stale || p.outAt || !p.inAt) {
-      history[date] = { in: day.in || now, out: day.out || null }
+      history[date] = { in: day.in || now, out: day.out || null, mode: day.mode || mode }
       return { value: { inAt: now, outAt: null, date, history }, result: { action: 'in', now } }
     }
-    history[date] = { in: day.in || p.inAt, out: now }
+    history[date] = { ...day, in: day.in || p.inAt, out: now }
     return { value: { ...p, outAt: now, date, history }, result: { action: 'out', now } }
   },
+
+  'payroll.run': (p, { run, payslips }) => ({
+    value: { runs: [run, ...p.runs.filter((r) => r.month !== run.month)], payslips: [...payslips, ...p.payslips.filter((x) => x.month !== run.month)] },
+    result: run.id,
+  }),
+  'payroll.pay': (p, { month, paidAt, by }) => ({
+    value: { ...p, runs: p.runs.map((r) => (r.month === month ? { ...r, status: 'Paid', paidAt, paidBy: by } : r)) },
+  }),
 
   'regularisation.add': (list, { request }) => ({ value: [request, ...list], result: request.id }),
   'regularisation.decide': (list, { id, status, by }) => ({

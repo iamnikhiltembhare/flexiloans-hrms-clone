@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Check, X, Download, ArrowUpRight } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
-import { leaveBalances } from '../data/mock.js'
+import { balancesFor, checkBalance, LEAVE_TYPES } from '../lib/hr/leave.js'
 import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
@@ -11,11 +11,13 @@ import { downloadCSV } from '../lib/download.js'
 import { PERMS } from '../data/accounts.js'
 
 // Start on the first real leave type so the form and the saved request agree.
-const BLANK = { type: leaveBalances[0].type, from: '', to: '', reason: '' }
+const BLANK = { type: LEAVE_TYPES[0], from: '', to: '', reason: '' }
 
 export default function Leave() {
   const { leaveRequests, addLeaveRequest, setLeaveStatus, toast, notify } = useApp()
   const { user, can } = useAuth()
+  // Balances follow the policy minus opening usage and approved requests.
+  const leaveBalances = balancesFor(user.id, leaveRequests)
   const [tab, setTab] = useState('My requests')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -33,6 +35,8 @@ export default function Leave() {
     if (!form.from || !form.to) { setErr('Pick both a start and an end date.'); return }
     if (new Date(form.to) < new Date(form.from)) { setErr('The end date cannot be before the start date.'); return }
     const days = Math.max(1, Math.round((new Date(form.to) - new Date(form.from)) / 86400000) + 1)
+    const balance = checkBalance(user.id, form.type, days, leaveRequests, Number(form.from.slice(0, 4)))
+    if (!balance.ok) { setErr(balance.message); return }
     addLeaveRequest({
       employee: user.name, empId: user.id, type: form.type,
       from: form.from, to: form.to, days, reason: form.reason.trim() || 'Personal',
@@ -102,7 +106,7 @@ export default function Leave() {
             <Card key={l.code} bodyClass="p-0" className="overflow-hidden">
               <div className="flex items-start justify-between gap-2 px-4 pt-3.5">
                 <p className="text-[12px] font-medium text-navy">{l.type}</p>
-                <p className="text-[11px] text-muted whitespace-nowrap">Granted: <span className="font-mono">{l.granted}</span></p>
+                <p className="text-[11px] text-muted whitespace-nowrap">Granted: <span className="font-mono">{l.unlimited ? '--' : l.granted}</span></p>
               </div>
 
               <div className="px-4 py-4 text-center">
@@ -117,7 +121,7 @@ export default function Leave() {
               </div>
 
               <div className="px-4 pb-3">
-                <p className="text-[10px] text-faint mb-1.5">{l.used} of {l.granted} Consumed</p>
+                <p className="text-[10px] text-faint mb-1.5">{l.used} of {l.granted} consumed{l.pending ? ' - ' + l.pending + ' pending' : ''}</p>
                 <div className="h-1 w-full rounded-full bg-line overflow-hidden">
                   <div className="h-full rounded-full bar-fill" style={{ width: pct + '%', background: l.bar }} />
                 </div>
@@ -162,7 +166,7 @@ export default function Leave() {
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2"><label className="label">Leave type</label>
             <select className="input" value={form.type} onChange={set('type')}>
-              {leaveBalances.map((l) => <option key={l.code}>{l.type}</option>)}
+              {leaveBalances.map((l) => <option key={l.code} value={l.type}>{l.type}{l.unlimited ? '' : ' - ' + Math.max(0, l.balance - l.pending) + ' left'}</option>)}
             </select>
           </div>
           <div><label className="label">From *</label><input type="date" className="input" value={form.from} onChange={set('from')} /></div>

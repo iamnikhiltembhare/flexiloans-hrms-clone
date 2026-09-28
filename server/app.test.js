@@ -470,3 +470,62 @@ test('assistant falls back to the built-in engine when the model call fails', as
   assert.equal(r.data.degraded, true)
   assert.match(r.data.reply, /requests/)
 })
+
+// --- payroll and leave balances ----------------------------------------------
+
+test('payroll: HR runs a month, amounts are recomputed server-side, paying releases payslips', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const now = new Date()
+  const month = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+
+  assert.equal((await act(emp, 'payroll.run', { month })).status, 403, 'employees cannot run payroll')
+  const forged = { month, bonusPercent: 10, payslips: [{ id: 'x', empId: 'FL1009', net: 99999999 }], run: { id: 'x', net: 1 } }
+  const ran = await act(hr, 'payroll.run', forged)
+  assert.equal(ran.status, 200)
+  const pr = ran.data.state.payroll
+  const run = pr.runs.find((r) => r.month === month)
+  assert.equal(run.status, 'Processed')
+  assert.equal(run.bonusPercent, 10)
+  const mine = pr.payslips.filter((p) => p.month === month)
+  assert.equal(mine.length, pr.payslips.filter((p) => p.month === '2026-08').length, 'one payslip per employee')
+  assert.ok(mine.every((p) => p.net < 1000000 && p.net === p.gross - p.totalDeductions), 'forged amounts ignored')
+  assert.ok(mine.find((p) => p.empId === 'FL1009').earnings.some((e) => /Bonus/.test(e.head)))
+
+  const before = (await call('GET', '/api/state', { token: emp })).data.payroll
+  assert.ok(!before.payslips.some((p) => p.month === month), 'not visible to employees until paid')
+  assert.ok(before.payslips.every((p) => p.empId === 'FL1009'), 'employees see only their own payslips')
+  assert.ok(before.runs.every((r) => r.net === undefined), 'employees do not see company totals')
+
+  assert.equal((await act(hr, 'payroll.pay', { month })).status, 200)
+  const after = (await call('GET', '/api/state', { token: emp })).data
+  assert.ok(after.payroll.payslips.some((p) => p.month === month))
+  assert.match(after.notifications[0].title, /Payslip for .* is ready/)
+  assert.equal((await act(hr, 'payroll.run', { month })).status, 400, 'a paid month is locked')
+  assert.equal((await act(hr, 'payroll.run', { month: '2099-01' })).status, 400, 'no future months')
+})
+
+test('leave requests cannot exceed the remaining balance', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const y = new Date().getFullYear() + 1
+  const over = await act(emp, 'leave.add', { request: { type: 'Restricted Holiday', from: y + '-03-02', to: y + '-03-03' } })
+  assert.equal(over.status, 400)
+  assert.match(over.data.error, /Only 1 day of Restricted Holiday left/)
+  assert.equal((await act(emp, 'leave.add', { request: { type: 'Restricted Holiday', from: y + '-03-02', to: y + '-03-02' } })).status, 200)
+  assert.equal((await act(emp, 'leave.add', { request: { type: 'Restricted Holiday', from: y + '-04-06', to: y + '-04-06' } })).status, 400, 'the pending day counts')
+  assert.equal((await act(emp, 'leave.add', { request: { type: 'Leave Without Pay', from: y + '-05-04', to: y + '-05-29' } })).status, 200, 'unpaid leave has no cap')
+})
+
+test('work-from-home punches are recorded', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const d = localDate()
+  await act(emp, 'punch.toggle', { now: '09:10 am', date: d }) // seed starts punched in -> out
+  const r = await act(emp, 'punch.toggle', { now: '09:40 am', date: d, mode: 'Remote' })
+  assert.equal(r.data.state.punch.history[d].mode, 'Remote', 'the day is marked as work from home')
+  await act(emp, 'punch.toggle', { now: '01:00 pm', date: d })
+  const again = await act(emp, 'punch.toggle', { now: '02:00 pm', date: d, mode: 'Office' })
+  assert.equal(again.data.state.punch.history[d].mode, 'Remote', 'the first chosen mode of the day is kept')
+})

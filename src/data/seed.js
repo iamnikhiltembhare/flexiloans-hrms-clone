@@ -5,6 +5,7 @@
 import {
   employees, leaveRequests, tickets, announcements, documents, candidates, openings,
 } from './mock.js'
+import { computeRun } from '../lib/hr/payroll.js'
 
 export const SEED_NOTIFICATIONS = [
   { id: 'n1', title: 'Leave request awaiting approval', detail: leaveRequests.find((r) => r.id === 'LV-2040').employee + ' applied for 1 day of Sick Leave', time: '12 min ago', to: '/leave', kind: 'leave', read: false },
@@ -21,6 +22,13 @@ const SEED_REGULARISATIONS = [
   { id: 'RG-1001', empId: 'FL1009', date: '2026-09-10', in: '09:48', out: '19:05', type: 'On duty / client visit', reason: 'Client workshop at the Andheri branch, no punch machine on site', status: 'Approved', appliedOn: '2026-09-11', decidedBy: 'Aarti Deshmukh' },
 ].map((r) => ({ ...r, employee: person(r.empId).name }))
 
+// July and August 2026 are already paid; September is HR's to run.
+const PAID_MONTHS = [['2026-07', '2026-07-31T12:00:00.000Z'], ['2026-08', '2026-08-31T12:00:00.000Z']]
+const SEED_PAYROLL = PAID_MONTHS.reduce((acc, [month, at]) => {
+  const { run, payslips } = computeRun(employees, month, { leaveRequests }, {}, 'Aarti Deshmukh')
+  return { runs: [{ ...run, status: 'Paid', runAt: at, paidAt: at, paidBy: 'Aarti Deshmukh' }, ...acc.runs], payslips: [...acc.payslips, ...payslips] }
+}, { runs: [], payslips: [] })
+
 export const SEED = {
   employees,
   leaveRequests,
@@ -29,6 +37,7 @@ export const SEED = {
   candidates,
   requisitions: openings,
   regularisations: SEED_REGULARISATIONS,
+  payroll: SEED_PAYROLL,
   documents,
   notifications: SEED_NOTIFICATIONS,
   punch: { inAt: '09:34 AM', outAt: null },

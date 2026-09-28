@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Menu, Bell, Search, LogOut, ChevronDown, Clock, CheckCheck,
-  CalendarDays, AlertTriangle, Briefcase, Info, User, X,
+  CalendarDays, AlertTriangle, Briefcase, Info, User, X, Building2, Home,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useApp } from '../context/DataContext.jsx'
@@ -93,12 +93,17 @@ export default function Topbar({ onMenu }) {
 
   const total = results ? results.people.length + results.pages.length + results.tickets.length : 0
 
-  const onPunch = () => {
-    const { action, now } = punchToggle()
+  // Punching in asks where you are working today; punching out does not.
+  const [where, setWhere] = useState(false)
+  useBackHandler(where, () => setWhere(false))
+  const doPunch = (mode) => {
+    setWhere(false)
+    const { action, now } = punchToggle(mode)
     haptic('success')
-    toast(action === 'in' ? 'Punched in' : 'Punched out',
+    toast(action === 'in' ? (mode === 'Remote' ? 'Punched in - working from home' : 'Punched in') : 'Punched out',
       (action === 'in' ? 'Shift started at ' : 'Shift ended at ') + now)
   }
+  const onPunch = () => (punchedIn ? doPunch() : setWhere((v) => !v))
 
   return (
     <header className="topbar h-14 shrink-0 bg-surface border-b-2 border-line shadow-[0_1px_3px_rgba(16,30,54,.06)] flex items-center gap-3 px-4 sticky top-0 z-30">
@@ -159,10 +164,26 @@ export default function Topbar({ onMenu }) {
       <span className="hidden xl:block text-[11px] text-muted ml-1">{today}</span>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <button onClick={onPunch} className={punchedIn ? 'btn-secondary' : 'btn-primary'}>
-          <Clock size={13} />
-          {punchedIn ? 'Punch out' : 'Punch in'}
-        </button>
+        <div className="relative">
+          <button onClick={onPunch} className={punchedIn ? 'btn-secondary' : 'btn-primary'} aria-expanded={where}>
+            <Clock size={13} />
+            {punchedIn ? 'Punch out' : 'Punch in'}
+          </button>
+          {where && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setWhere(false)} />
+              <div className="absolute right-0 mt-1.5 w-56 card p-1 z-20 origin-top-right" style={{ animation: 'fl-pop .2s cubic-bezier(.22,.8,.3,1) both' }}>
+                <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-faint">Where are you working today?</p>
+                <button className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-canvas" onClick={() => doPunch('Office')}>
+                  <Building2 size={15} className="text-cyan-ink" /><span><span className="block text-[13px] font-medium text-navy">In the office</span><span className="block text-[10.5px] text-muted">Biometric or desk check-in</span></span>
+                </button>
+                <button className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-canvas" onClick={() => doPunch('Remote')}>
+                  <Home size={15} className="text-[#7C3AED]" /><span><span className="block text-[13px] font-medium text-navy">Work from home</span><span className="block text-[10.5px] text-muted">Counts as present, marked remote</span></span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         <ThemeToggle />
 

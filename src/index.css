@@ -410,3 +410,10 @@ html.native input, html.native textarea, html.native select { -webkit-user-selec
   .tilt, .layer, .layer-card { transform: none !important; }
   .tilt::after, .sheen::before { display: none; }
 }
+
+/* Printing a payslip: only the payslip, on plain white. */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; background: #fff; color: #111; }
+}
