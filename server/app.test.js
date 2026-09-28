@@ -371,3 +371,102 @@ test('regularisation input is validated', async () => {
   assert.equal((await add({ in: '09:30', date: localDate(new Date(Date.now() + 5 * 86400000)) })).status, 400, 'no future days')
   assert.equal((await add({ in: '09:30', date: '2026-01-01' })).status, 400, 'older than 60 days')
 })
+
+// --- HR Assistant -----------------------------------------------------------
+
+import { createAssistant } from './assistant.js'
+
+function setupWith(assistant) {
+  const handle = createApp({ store: sqliteStore(':memory:'), secret: SECRET, assistant })
+  const call = async (method, path, { token, body } = {}) => {
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers.Authorization = 'Bearer ' + token
+    const res = await handle(new Request(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined }))
+    return { status: res.status, data: await res.json().catch(() => null) }
+  }
+  const login = async (u, p) => (await call('POST', '/api/auth/login', { body: { username: u, password: p } })).data.token
+  return { call, login }
+}
+
+test('assistant (built-in engine): HR lists, proposes, confirms; the change is audited', async () => {
+  const { call, login } = setupWith(createAssistant())
+  const hr = await login(...HR)
+  const admin = await login(...ADMIN)
+  const ask = (message, memory) => call('POST', '/api/assistant', { token: hr, body: { message, memory } })
+
+  const list = await ask('Show pending leave requests from the Engineering department')
+  assert.equal(list.status, 200)
+  assert.equal(list.data.engine, 'rules')
+  assert.match(list.data.reply, /Nikhil Tembhare/)
+  assert.equal(list.data.cards[0].kind, 'table')
+
+  const prop = await ask('Approve the first one', list.data.memory)
+  const p = prop.data.proposals[0]
+  assert.deepEqual({ type: p.type, payload: p.payload }, { type: 'leave.setStatus', payload: { id: 'LV-2041', status: 'Approved' } })
+  const before = (await call('GET', '/api/state', { token: hr })).data.leaveRequests.find((r) => r.id === 'LV-2041')
+  assert.equal(before.status, 'Pending', 'nothing changes until confirmed')
+
+  assert.equal((await call('POST', '/api/actions', { token: hr, body: { type: p.type, payload: p.payload, via: 'assistant' } })).status, 200)
+  const log = (await call('GET', '/api/admin/audit', { token: admin })).data.entries
+  assert.ok(log.some((e) => e.action === 'leave.setStatus' && e.target === 'LV-2041' && e.via === 'assistant' && e.actor === 'Aarti Deshmukh'))
+  assert.ok(log.some((e) => e.action === 'assistant.ask'))
+  assert.equal((await call('GET', '/api/admin/audit', { token: hr })).status, 403, 'audit log is admin only')
+
+  const hist = (await call('GET', '/api/assistant/history', { token: hr })).data.messages
+  assert.equal(hist.length, 4)
+})
+
+test('assistant refuses sensitive requests and keeps employees to their own data', async () => {
+  const { call, login } = setupWith(createAssistant())
+  const emp = await login(...EMP)
+  const ask = (message) => call('POST', '/api/assistant', { token: emp, body: { message } })
+  assert.match((await ask('Increase my salary by 20%')).data.reply, /outside what I can do/)
+  assert.match((await ask('Terminate Rahul Patel')).data.reply, /outside what I can do/)
+  assert.match((await ask('Approve Arjun Joshi leave')).data.reply, /Only HR/)
+  assert.match((await ask('How many employees are absent today?')).data.reply, /visible to HR only/)
+  assert.match((await ask('Show open positions')).data.reply, /limited to the HR team/)
+})
+
+test('assistant (Claude path): tools run with the user\'s permissions and results go back to the model', async () => {
+  const calls = []
+  const scripted = [
+    { stop_reason: 'tool_use', content: [
+      { type: 'text', text: 'Let me check.' },
+      { type: 'tool_use', id: 't1', name: 'list_leave_requests', input: { status: 'Pending' } },
+      { type: 'tool_use', id: 't2', name: 'propose_leave_decision', input: { employee_or_request: 'Arjun Joshi', decision: 'approve' } },
+    ] },
+    { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Done looking.' }] },
+  ]
+  const fake = { beta: { messages: { create: async (params) => { calls.push(structuredClone(params)); return scripted[calls.length - 1] } } } }
+  const { call, login } = setupWith(createAssistant({ client: fake }))
+  const emp = await login(...EMP)
+  const r = await call('POST', '/api/assistant', { token: emp, body: { message: 'approve arjun joshi leave' } })
+  assert.equal(r.data.engine, 'claude')
+  assert.equal(r.data.reply, 'Done looking.')
+  assert.equal(r.data.proposals.length, 0, 'an employee gets no approval proposal')
+
+  const first = calls[0]
+  assert.equal(first.model, 'claude-opus-5')
+  assert.deepEqual(first.thinking, { type: 'adaptive' })
+  assert.equal(first.fallbacks, 'default')
+  assert.ok(first.tools.some((t) => t.name === 'propose_leave_decision'))
+  assert.match(first.system[1].text, /Nikhil Tembhare/)
+
+  const results = calls[1].messages.at(-1).content
+  assert.equal(results.length, 2, 'both tool results in one message')
+  const [list, propose] = results
+  assert.ok(JSON.parse(list.content).requests.every((q) => q.employee === 'Nikhil Tembhare'), 'model sees only the employee\'s own requests')
+  assert.equal(propose.is_error, true)
+  assert.match(JSON.parse(propose.content).error, /Only HR/)
+})
+
+test('assistant falls back to the built-in engine when the model call fails', async () => {
+  const fake = { beta: { messages: { create: async () => { throw new Error('network down') } } } }
+  const { call, login } = setupWith(createAssistant({ client: fake }))
+  const hr = await login(...HR)
+  const r = await call('POST', '/api/assistant', { token: hr, body: { message: 'show pending leave requests' } })
+  assert.equal(r.status, 200)
+  assert.equal(r.data.engine, 'rules')
+  assert.equal(r.data.degraded, true)
+  assert.match(r.data.reply, /requests/)
+})

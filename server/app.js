@@ -14,6 +14,7 @@ import { BRAND } from '../src/lib/brand.js'
 import { ACTIONS, COLLECTIONS, applyAction, nextSerial, today } from '../src/lib/actions.js'
 import { hashPassword, verifyPassword, issueToken, readToken } from './auth.js'
 import { HttpError, prepare, visibleTo, fanOut, notificationFor } from './rules.js'
+import { createAssistant } from './assistant.js'
 
 const MAX_BODY = 64 * 1024
 const fail = (msg) => { throw new HttpError(400, msg) }
@@ -53,7 +54,7 @@ const DEMO_LOGINS = ALL_ACCOUNTS.map((a) => ({ ...a, password: passwordFor(a.use
  * password }]. Production uses the demo accounts; the test environment
  * passes its own (see functions/api.js).
  */
-export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, accounts = DEMO_LOGINS }) {
+export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, accounts = DEMO_LOGINS, assistant = createAssistant() }) {
   if (!secret || secret.length < 32) throw new Error('HRMS_TOKEN_SECRET must be at least 32 characters')
 
   // --- data access --------------------------------------------------------
@@ -152,7 +153,7 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
 
   async function act(req) {
     const actor = await actorFrom(req)
-    const { type, payload } = await body(req)
+    const { type, payload, via } = await body(req)
     const spec = ACTIONS[type]
     if (!spec) throw new HttpError(400, 'Unknown action ' + type)
     if (!actor.perms.includes(spec.perm)) throw new HttpError(403, 'Your role cannot do that.')
@@ -174,7 +175,64 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
       await Promise.all(everyone.filter(to).map((u) => pushNotification(u.username, notification)))
     }
 
+    await audit(actor, type, targetOf(type, clean), via === 'assistant' ? 'assistant' : 'app')
     return { result, state: await stateFor(actor) }
+  }
+
+  // --- audit log -------------------------------------------------------------
+  // Every change, and every question to the assistant, with who and when.
+
+  const AUDIT_MAX = 500
+  const targetOf = (type, p) => p?.id || p?.name || p?.request?.id || p?.ticket?.id || p?.employee?.id
+    || p?.requisition?.id || p?.announcement?.title || p?.document?.name || (type === 'punch.toggle' ? p?.date : '') || ''
+  async function audit(actor, action, target, via, detail) {
+    const entry = { id: 'AU-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: new Date().toISOString(),
+      actor: actor.name, username: actor.username, role: actor.role, action, target: String(target || '').slice(0, 120), via, ...(detail ? { detail } : {}) }
+    await store.update('audit', (cur) => [entry, ...(cur || [])].slice(0, AUDIT_MAX))
+  }
+
+  async function auditLog(req) {
+    const actor = await actorFrom(req)
+    if (!actor.perms.includes(PERMS.ADMIN_SYSTEM)) throw new HttpError(403, 'Only a super admin can read the audit log.')
+    return { entries: (await store.get('audit')) || [] }
+  }
+
+  // --- HR Assistant -------------------------------------------------------
+
+  const CHAT_MAX = 60
+  const chatKey = (username) => 'chat/' + username
+
+  async function ask(req) {
+    const actor = await actorFrom(req)
+    const b = await body(req)
+    const message = typeof b.message === 'string' ? b.message.trim().slice(0, 2000) : ''
+    if (!message) throw new HttpError(400, 'Type a question for the assistant')
+    // The device's date and time, so "today" matches the user's time zone.
+    const localToday = /^\d{4}-\d{2}-\d{2}$/.test(b.today) && Math.abs(Date.parse(b.today) - Date.now()) < 36 * 3600 * 1000 ? b.today : today()
+    const nowMin = Number.isInteger(b.nowMin) && b.nowMin >= 0 && b.nowMin < 1440 ? b.nowMin : null
+    const ctx = { actor, state: await stateFor(actor), today: localToday, nowMin }
+    const history = ((await store.get(chatKey(actor.username))) || []).map((m) => ({ role: m.role, text: m.text }))
+    const memory = b.memory && typeof b.memory === 'object' && Array.isArray(b.memory.pending) ? { pending: b.memory.pending.slice(0, 20).map(String) } : {}
+
+    const out = await assistant.answer({ message, history, ctx, memory })
+    const at = new Date().toISOString()
+    await store.update(chatKey(actor.username), (cur) => [...(cur || []),
+      { role: 'user', text: message, at },
+      { role: 'assistant', text: out.reply, at, cards: out.cards, proposals: out.proposals, engine: out.engine },
+    ].slice(-CHAT_MAX))
+    await audit(actor, out.refused ? 'assistant.refused' : 'assistant.ask', (out.tools || []).join(', '), 'assistant', message.slice(0, 200))
+    return { reply: out.reply, cards: out.cards || [], proposals: out.proposals || [], engine: out.engine, degraded: !!out.degraded, memory: out.memory || {} }
+  }
+
+  async function chatHistory(req) {
+    const actor = await actorFrom(req)
+    return { messages: (await store.get(chatKey(actor.username))) || [], engine: assistant.engine }
+  }
+
+  async function clearChat(req) {
+    const actor = await actorFrom(req)
+    await store.set(chatKey(actor.username), [])
+    return { messages: [] }
   }
 
   async function reset(req) {
@@ -257,6 +315,10 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     'POST /api/admin/reset': reset,
     'GET /api/admin/users': listUsers,
     'POST /api/admin/users': createUser,
+    'GET /api/admin/audit': auditLog,
+    'POST /api/assistant': ask,
+    'GET /api/assistant/history': chatHistory,
+    'POST /api/assistant/clear': clearChat,
   }
 
   return async function handle(req) {

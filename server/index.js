@@ -30,6 +30,7 @@ const handle = createEnvironments({
   makeStore: (name) => sqliteStore(name === 'hrms' ? dbFile : dbFile.replace(/(\.db)?$/, '-test.db')),
   secret,
   allowedOrigins: [...DEFAULT_ORIGINS, ...extra],
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 })
 
 createServer(async (req, res) => {

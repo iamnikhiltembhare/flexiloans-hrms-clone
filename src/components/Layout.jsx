@@ -7,6 +7,7 @@ import DemoBanner from './DemoBanner.jsx'
 import TestBanner from './TestBanner.jsx'
 import BottomNav from './BottomNav.jsx'
 import MobileMenu from './MobileMenu.jsx'
+import AssistantLauncher from './assistant/AssistantLauncher.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { usePullToRefresh } from '../lib/usePullToRefresh.js'
 import { readStored, writeStored } from '../lib/persist.js'
@@ -60,6 +61,7 @@ export default function Layout() {
         <BottomNav onMore={() => setOpen(true)} />
       </div>
       <MobileMenu open={open} onClose={() => setOpen(false)} />
+      <AssistantLauncher />
     </div>
   )
 }

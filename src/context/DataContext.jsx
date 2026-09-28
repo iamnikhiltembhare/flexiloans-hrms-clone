@@ -6,6 +6,7 @@ import { SEED } from '../data/seed.js'
 import { ALL_ACCOUNTS, ROLES } from '../data/accounts.js'
 import { BRAND } from '../lib/brand.js'
 import { createdAccounts, addCreatedAccount } from '../lib/localAccounts.js'
+import { answerWithRules } from '../lib/assistant/rules.js'
 import { useAuth } from './AuthContext.jsx'
 import ToastStack from '../components/Toast.jsx'
 
@@ -101,6 +102,60 @@ export function DataProvider({ children }) {
 
   // --- actions (same names and return values the pages always used) ------
   const me = user?.name || 'Current user'
+
+  // --- HR Assistant ---------------------------------------------------------
+  // Server mode: the API answers (Claude or its built-in engine), keeps the
+  // chat history and writes the audit log. Offline demo: the same built-in
+  // engine runs here and history/audit stay in this browser.
+  const logLocal = useCallback((action, target, detail) => {
+    if (API_MODE) return
+    const entry = { id: 'AU-' + Date.now().toString(36), at: new Date().toISOString(), actor: me, username: user?.username,
+      role: user?.role, action, target: target || '', via: 'assistant', ...(detail ? { detail } : {}) }
+    writeStored('auditLog', [entry, ...readStored('auditLog', [])].slice(0, 500))
+  }, [me, user])
+
+  const askAssistant = useCallback(async (message, memory) => {
+    const d = new Date()
+    const nowMin = d.getHours() * 60 + d.getMinutes()
+    if (API_MODE) return api('/api/assistant', { method: 'POST', body: { message, memory, today: localDate(), nowMin } })
+    const out = answerWithRules(message, { actor: user, state: stateRef.current, today: localDate(), nowMin }, memory)
+    logLocal(out.refused ? 'assistant.refused' : 'assistant.ask', (out.tools || []).join(', '), message.slice(0, 200))
+    return { ...out, engine: 'rules' }
+  }, [user, logLocal])
+
+  const chatKey = 'assistantChat:' + (user?.username || '')
+  const loadChat = useCallback(async () => {
+    if (API_MODE) return api('/api/assistant/history')
+    return { messages: readStored(chatKey, []), engine: 'rules' }
+  }, [chatKey])
+  const saveChat = useCallback((messages) => { if (!API_MODE) writeStored(chatKey, messages.slice(-60)) }, [chatKey])
+  const clearChat = useCallback(async () => {
+    if (API_MODE) await api('/api/assistant/clear', { method: 'POST' })
+    else writeStored(chatKey, [])
+  }, [chatKey])
+
+  // Run a confirmed action and wait for the server's verdict, so the
+  // assistant can say whether it worked. Same validation as the screens.
+  const runAction = useCallback(async (type, payload, via = 'app') => {
+    if (!API_MODE) {
+      const result = dispatch(type, payload)
+      if (via === 'assistant') logLocal(type, payload?.id || payload?.name || payload?.request?.from || '')
+      return { ok: true, result }
+    }
+    pending.current++
+    try {
+      const { result, state: server } = await api('/api/actions', { method: 'POST', body: { type, payload, via } })
+      commit(server)
+      return { ok: true, result }
+    } catch (err) {
+      refresh()
+      return { ok: false, error: err.message }
+    } finally {
+      pending.current = Math.max(0, pending.current - 1)
+    }
+  }, [dispatch, commit, refresh, logLocal])
+
+  const listAudit = useCallback(async () => (API_MODE ? (await api('/api/admin/audit')).entries : readStored('auditLog', [])), [])
 
   const notify = useCallback((n) => dispatch('notification.add', {
     notification: { id: newNotificationId(), time: 'Just now', at: new Date().toISOString(), read: false, kind: 'info', ...n },
@@ -201,10 +256,12 @@ export function DataProvider({ children }) {
     notify, markRead, markAllRead, clearNotifications,
     unread: state.notifications.filter((n) => !n.read).length,
     toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    askAssistant, loadChat, saveChat, clearChat, runAction, listAudit,
     ready, loadError, refresh, online: API_MODE,
   }), [state, addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
     addAnnouncement, addDocument, advanceCandidate, addRequisition, notify, markRead,
-    markAllRead, clearNotifications, toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser, ready, loadError, refresh])
+    markAllRead, clearNotifications, toast, punchToggle, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    askAssistant, loadChat, saveChat, clearChat, runAction, listAudit, ready, loadError, refresh])
 
   return (
     <DataContext.Provider value={value}>

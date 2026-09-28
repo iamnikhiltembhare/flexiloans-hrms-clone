@@ -13,7 +13,7 @@ const YesNo = ({ on }) => on
   : <X size={14} className="text-faint" />
 
 export default function SystemAdmin() {
-  const { toast, notify, listUsers } = useApp()
+  const { toast, notify, listUsers, listAudit } = useApp()
   const [tab, setTab] = useState('User accounts')
   const [q, setQ] = useState('')
   const [creating, setCreating] = useState(false)
@@ -29,13 +29,24 @@ export default function SystemAdmin() {
     .filter((a) => (a.name + a.username + a.role).toLowerCase().includes(q.toLowerCase()))
   const createdCount = (list || []).filter((a) => a.source === 'admin').length
 
+  // Real events (every change and every assistant question) above the sample history.
+  const [events, setEvents] = useState([])
+  useEffect(() => { listAudit().then(setEvents).catch(() => {}) }, [listAudit, tab])
+  const ACTION_LABEL = { 'assistant.ask': 'Asked the assistant', 'assistant.refused': 'Assistant refused', 'leave.setStatus': 'Leave decision', 'ticket.setStatus': 'Ticket update',
+    'regularisation.decide': 'Regularisation decision', 'regularisation.add': 'Regularisation request', 'leave.add': 'Leave applied', 'candidate.advance': 'Candidate moved', 'punch.toggle': 'Punch in/out' }
+  const auditRows = [
+    ...events.map((e) => ({ id: e.id, at: new Date(e.at).toLocaleString('en-IN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ''), actor: e.actor, action: ACTION_LABEL[e.action] || e.action,
+      target: [e.target, e.detail && '"' + e.detail + '"'].filter(Boolean).join(' - '), ip: e.via === 'assistant' ? 'HR Assistant' : 'App' })),
+    ...auditLog,
+  ]
+
   const exportAudit = () => {
     downloadCSV('flexiloans-audit-log.csv', [
       { header: 'Event', key: 'id' }, { header: 'When', key: 'at' },
       { header: 'Actor', key: 'actor' }, { header: 'Action', key: 'action' },
       { header: 'Target', key: 'target' }, { header: 'Source', key: 'ip' },
-    ], auditLog)
-    toast('Audit log exported', auditLog.length + ' events written to CSV')
+    ], auditRows)
+    toast('Audit log exported', auditRows.length + ' events written to CSV')
   }
 
   return (
@@ -53,7 +64,7 @@ export default function SystemAdmin() {
         <StatCard label="Configured roles" value={Object.keys(ROLES).length} icon={ShieldCheck} tone="purple" />
         <StatCard label="Sign-in accounts" value={list ? list.length : ALL_ACCOUNTS.length}
           hint={createdCount ? createdCount + ' created by admins' : 'every employee plus HR and admin'} icon={Users} tone="cyan" />
-        <StatCard label="Audit events" value={auditLog.length} hint="shown in this view" icon={ScrollText} tone="blue" />
+        <StatCard label="Audit events" value={auditRows.length} hint={events.length ? events.filter((e) => e.via === 'assistant').length + ' through the HR Assistant' : 'shown in this view'} icon={ScrollText} tone="blue" />
         <StatCard label="Integrations" value={integrations.filter((i) => i.status === 'Connected').length + '/' + integrations.length} hint="fully connected" icon={Plug} tone="green" />
       </div>
 
@@ -117,12 +128,12 @@ export default function SystemAdmin() {
               { key: 'at', header: 'When', mono: true },
               { key: 'actor', header: 'Actor' },
               { key: 'action', header: 'Action', render: (r) => (
-                <Badge tone={r.action.includes('Failed') ? 'red' : r.action.includes('Role') ? 'purple' : 'gray'}>{r.action}</Badge>
+                <Badge tone={/Failed|refused/.test(r.action) ? 'red' : /Role|assistant/i.test(r.action) ? 'purple' : 'gray'}>{r.action}</Badge>
               )},
-              { key: 'target', header: 'Target' },
+              { key: 'target', header: 'Target', render: (r) => <span className="block max-w-[26rem] whitespace-normal">{r.target}</span> },
               { key: 'ip', header: 'Source', mono: true },
             ]}
-            rows={auditLog}
+            rows={auditRows}
           />
         </Card>
       )}

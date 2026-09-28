@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays, Wallet, FileText,
   Megaphone, Briefcase, Target, LifeBuoy, BarChart3, Settings, User, ShieldCheck, CalendarHeart,
-  Radio, Layers, Contact,
+  Radio, Layers, Contact, Sparkles,
 } from 'lucide-react'
 import { PERMS } from '../data/accounts.js'
 
@@ -13,6 +13,7 @@ export const NAV_GROUPS = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, perm: PERMS.SELF, tint: '#2563EB' },
     { to: '/announcements', label: 'Announcements', icon: Megaphone, perm: PERMS.SELF, tint: '#D97706' },
     { to: '/engage', label: 'Engage', icon: Radio, perm: PERMS.SELF, tint: '#DB2777' },
+    { to: '/assistant', label: 'HR Assistant', short: 'Assistant', icon: Sparkles, perm: PERMS.SELF, tint: '#7C3AED' },
   ]},
   { title: 'My Workspace', items: [
     { to: '/attendance', label: 'Attendance', icon: CalendarCheck, perm: PERMS.SELF, tint: '#16A34A' },

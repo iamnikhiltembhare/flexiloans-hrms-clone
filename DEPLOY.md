@@ -153,6 +153,40 @@ npm run test:server                    # API tests against an in-memory database
 On Render or similar: start command `npm run server`, Node 22.13+, a
 persistent disk mounted where `HRMS_DB` points, `NODE_ENV=production`.
 
+## HR Assistant (chatbot)
+
+A chat assistant on every screen (the "Ask HR" button, Ctrl/Cmd+J, or the
+HR Assistant page). People ask in plain language - "How many employees are
+absent today?", "Approve Priya's leave request", "Generate the attendance
+report for the sales department" - and get answers, tables, CSV exports and
+checklists.
+
+How it is kept safe:
+
+- It answers from HRMS tools (`src/lib/assistant/tools.js`) that only see
+  what the signed-in person's role can see; it never reads the database
+  directly.
+- It cannot change anything. Approvals, leave applications, ticket and
+  candidate updates come back as a proposal with a **Confirm** button; the
+  change then goes through `/api/actions` with the normal server checks.
+- Salary changes, terminations, promotions, disciplinary decisions and
+  sensitive personal data (bank, PAN, Aadhaar, health) are refused before
+  any model or tool runs.
+- Every question and every confirmed change is written to the audit log
+  (System Admin -> Audit log); chat history is kept per user.
+
+Which engine answers:
+
+| Setup | Engine |
+|-------|--------|
+| API site has Anthropic access (`ANTHROPIC_API_KEY`, or Netlify AI Gateway) | Claude (`claude-opus-5`, low effort, server-side refusal fallback) reads the request and calls the tools |
+| No Anthropic access, a model error, or the offline demo | The built-in engine (`src/lib/assistant/rules.js`) - same tools, same safeguards |
+
+On Netlify the AI Gateway can supply Anthropic access on its own, with its
+own rate limits; when it returns 429 the assistant falls back to the
+built-in engine for that message. For steady Claude answers, add your own
+`ANTHROPIC_API_KEY` (scope: Functions) on the API site and redeploy it.
+
 ## Android app
 
 Capacitor wraps the full-stack build into a native Android app

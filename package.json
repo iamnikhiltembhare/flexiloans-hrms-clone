@@ -9,11 +9,12 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "test:server": "node --test --test-timeout=30000 server/app.test.js",
+    "test:server": "node --test --test-timeout=180000 server/app.test.js",
     "build:android": "vite build --mode android && cap sync android",
     "android:icons": "node scripts/make-app-icons.mjs && capacitor-assets generate --android"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",

@@ -34,7 +34,10 @@ const generated = Array.from({ length: 64 }, (_, i) => {
     department: dept,
     designation: pick(designations[dept], i + 5),
     location: pick(locations, i + 13),
-    joinDate: '20' + (19 + (i % 7)) + '-' + String((i % 12) + 1).padStart(2, '0') + '-' + String((i % 27) + 1).padStart(2, '0'),
+    // Most joined 2019-2025; every ninth person is a 2026 joiner (a few in September).
+    joinDate: i % 9 === 4
+      ? '2026-' + String(Math.min(9, 5 + (i % 5))).padStart(2, '0') + '-' + String((i % 20) + 2).padStart(2, '0')
+      : '20' + (19 + (i % 7)) + '-' + String((i % 12) + 1).padStart(2, '0') + '-' + String((i % 27) + 1).padStart(2, '0'),
     status: i % 17 === 0 ? 'On Notice' : i % 23 === 0 ? 'Probation' : 'Active',
     manager: pick(firstNames, i + 21) + ' ' + pick(lastNames, i + 29),
     experience: (2 + (i % 12)) + ' yrs',

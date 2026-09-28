@@ -24,6 +24,7 @@ import People from './pages/People.jsx'
 import RequestHub from './pages/RequestHub.jsx'
 import SystemAdmin from './pages/SystemAdmin.jsx'
 import NoAccess from './pages/NoAccess.jsx'
+import Assistant from './pages/Assistant.jsx'
 
 function RequireAuth({ children }) {
   const { user } = useAuth()
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="requests" element={<Require perm={PERMS.SELF}><RequestHub /></Require>} />
         <Route path="performance" element={<Require perm={PERMS.SELF}><Performance /></Require>} />
         <Route path="profile" element={<Require perm={PERMS.SELF}><Profile /></Require>} />
+        <Route path="assistant" element={<Require perm={PERMS.SELF}><Assistant /></Require>} />
 
         {/* People ops - HR and Super Admin only */}
         <Route path="employees" element={<Require perm={PERMS.HR_PEOPLE}><Employees /></Require>} />

@@ -17,6 +17,8 @@ export default async (req) => {
   handle ??= createEnvironments({
     makeStore: blobsStore,
     secret,
+    // Optional: with a key the assistant uses Claude, otherwise the built-in engine.
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     allowedOrigins: process.env.HRMS_ALLOWED_ORIGINS
       ? process.env.HRMS_ALLOWED_ORIGINS.split(',').map((s) => s.trim())
       : undefined,
