@@ -41,6 +41,8 @@ export const COLLECTIONS = {
   payroll: 'shared',
   onboarding: 'shared',
   appraisals: 'shared',
+  training: 'shared',
+  grievances: 'shared',
   documents: 'personal',
   notifications: 'personal',
   punch: 'personal',
@@ -76,6 +78,13 @@ export const ACTIONS = {
   'appraisal.progress': { collection: 'appraisals', perm: PERMS.SELF },
   'appraisal.self': { collection: 'appraisals', perm: PERMS.SELF },
   'appraisal.review': { collection: 'appraisals', perm: PERMS.HR_PEOPLE },
+  'course.add': { collection: 'training', perm: PERMS.HR_PEOPLE },
+  'course.assign': { collection: 'training', perm: PERMS.HR_PEOPLE, needs: ['employees'] },
+  'course.enroll': { collection: 'training', perm: PERMS.SELF },
+  'course.progress': { collection: 'training', perm: PERMS.SELF },
+  'grievance.add': { collection: 'grievances', perm: PERMS.SELF },
+  'grievance.update': { collection: 'grievances', perm: PERMS.HR_PEOPLE },
+  'grievance.reply': { collection: 'grievances', perm: PERMS.SELF },
   'notification.add': { collection: 'notifications', perm: PERMS.SELF },
   'notification.read': { collection: 'notifications', perm: PERMS.SELF },
   'notification.readAll': { collection: 'notifications', perm: PERMS.SELF },
@@ -185,6 +194,23 @@ const REDUCERS = {
   }),
   'appraisal.review': (list, { id, manager }) => ({
     value: list.map((a) => (a.id === id ? { ...a, manager, status: 'Completed' } : a)),
+  }),
+
+  // --- training ---
+  'course.add': (t, { course }) => ({ value: { ...t, courses: [...t.courses, course] }, result: course.id }),
+  'course.assign': (t, { enrollments }) => ({ value: { ...t, enrollments: [...enrollments, ...t.enrollments] }, result: enrollments.length }),
+  'course.enroll': (t, { enrollment }) => ({ value: { ...t, enrollments: [enrollment, ...t.enrollments] }, result: enrollment.id }),
+  'course.progress': (t, { id, progress, status, completedAt }) => ({
+    value: { ...t, enrollments: t.enrollments.map((e) => (e.id === id ? { ...e, progress, status, completedAt } : e)) },
+  }),
+
+  // --- grievances ---
+  'grievance.add': (list, { grievance }) => ({ value: [grievance, ...list], result: grievance.id }),
+  'grievance.update': (list, { id, status, assignedTo, update }) => ({
+    value: list.map((g) => (g.id !== id ? g : { ...g, status, assignedTo, updates: update ? [...(g.updates || []), update] : g.updates })),
+  }),
+  'grievance.reply': (list, { id, update }) => ({
+    value: list.map((g) => (g.id === id ? { ...g, updates: [...(g.updates || []), update] } : g)),
   }),
 
   'regularisation.add': (list, { request }) => ({ value: [request, ...list], result: request.id }),

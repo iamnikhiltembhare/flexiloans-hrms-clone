@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import LiveAlerts from '../../components/LiveAlerts.jsx'
 import {
   ResponsiveContainer, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -51,6 +52,8 @@ export default function SuperAdminDashboard() {
         <StatCard label="Failed sign-ins" value={failedLogins} hint="past 5 working days" icon={KeyRound} tone="red" />
         <StatCard label="Audit events today" value="34" hint={auditLog.length + ' shown below'} icon={ScrollText} tone="blue" />
       </div>
+
+      <LiveAlerts className="mb-4" />
 
       <div className="grid gap-4 lg:grid-cols-3 mb-4">
         <Card title="Sign-in activity" subtitle="Successful vs failed, this week" className="lg:col-span-2">

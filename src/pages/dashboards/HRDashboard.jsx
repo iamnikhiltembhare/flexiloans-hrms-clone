@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import { useApp } from '../../context/DataContext.jsx'
 import { headcountTrend, deptDistribution, attendanceTrend, birthdays, anniversaries } from '../../data/mock.js'
 import { BRAND } from '../../lib/brand.js'
+import LiveAlerts from '../../components/LiveAlerts.jsx'
 
 const PIE = ['#1B365D', '#00B4D8', '#2563EB', '#7C3AED', '#16A34A', '#D97706', '#DC2626', '#0097B2', '#64748B', '#9333EA']
 const tip = { contentStyle: { borderRadius: 10, border: '1px solid #E5E7EB', fontSize: 12 } }
@@ -55,6 +56,8 @@ export default function HRDashboard() {
         <StatCard label="Open requisitions" value={openings.length} hint={openings.filter((o) => o.priority === 'High').length + ' high priority'} icon={Briefcase} tone="blue" />
         <StatCard label="SLA breaches" value={breached.length} hint="helpdesk tickets overdue" icon={AlertTriangle} tone="red" />
       </div>
+
+      <LiveAlerts className="mb-4" />
 
       <div className="grid gap-4 lg:grid-cols-3 mb-4">
         <Card title="Headcount trend" subtitle="Rolling six months" className="lg:col-span-2">

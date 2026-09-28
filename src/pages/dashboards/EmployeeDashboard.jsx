@@ -10,6 +10,7 @@ import { holidayList, prettyDate, weekdayOf, OPTIONAL_HOLIDAY_QUOTA } from '../.
 import { INR } from '../../data/mock.js'
 import { balancesFor } from '../../lib/hr/leave.js'
 import { monthLabel } from '../../lib/hr/payroll.js'
+import LiveAlerts from '../../components/LiveAlerts.jsx'
 
 const QUOTES = [
   ['Either you run the day, or the day runs you.', 'Jim Rohn'],
@@ -62,6 +63,8 @@ export default function EmployeeDashboard() {
         title={greeting + ', ' + (user?.shortName || String(user?.name || '').split(' ')[0])}
         subtitle={`"${quote}" - ${author}`}
       />
+
+      <LiveAlerts className="mb-4" />
 
       <div className="grid gap-4 lg:grid-cols-3 xl:grid-cols-4">
         {/* Review */}

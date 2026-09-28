@@ -5,6 +5,7 @@
 import { PERMS } from '../src/data/accounts.js'
 import { checkBalance } from '../src/lib/hr/leave.js'
 import { computeRun, monthLabel } from '../src/lib/hr/payroll.js'
+import { COURSE_MODES, GRIEVANCE_CATEGORIES, GRIEVANCE_SEVERITIES, GRIEVANCE_STATUSES, severityFor } from '../src/lib/hr/growth.js'
 import { INTERVIEW_ROUNDS, INTERVIEW_MODES, RECOMMENDATIONS, CANDIDATE_SOURCES, POLICIES, COMPETENCIES, candidateRating, onboardingTasks } from '../src/lib/hr/people.js'
 import { CANDIDATE_STAGES, REGULARISATION_TYPES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
 
@@ -276,6 +277,83 @@ export function prepare(type, payload, actor, current, extra = {}) {
       return { id: a.id, manager: { ...review(p.manager, 'Manager'), by: actor.name } }
     }
 
+    // --- training -------------------------------------------------------------
+    case 'course.add': {
+      const c = p.course || {}
+      const title = required(c.title, 'Course title', 120)
+      if (current.courses.some((x) => x.title.toLowerCase() === title.toLowerCase())) bad('A course called ' + title + ' already exists')
+      const hours = Number(c.hours)
+      if (!(hours > 0 && hours <= 200)) bad('Hours must be between 1 and 200')
+      return { course: {
+        id: uniqueId(current.courses, c.id, /^CR-\d+$/, 'CR-', 100), title, skill: required(c.skill, 'Skill', 60), hours,
+        mode: oneOf(c.mode, COURSE_MODES, 'Online'), mandatory: !!c.mandatory, provider: str(c.provider, 80) || 'FlexiLoans Academy',
+      } }
+    }
+    case 'course.assign': {
+      const course = current.courses.find((c) => c.id === p.courseId) || bad('No such course')
+      const due = isoDate(p.due, 'Due date')
+      const ids = Array.isArray(p.empIds) ? [...new Set(p.empIds)].slice(0, 500) : []
+      const people = (extra.employees || []).filter((e) => ids.includes(e.id))
+      if (!people.length) bad('Pick at least one person')
+      let n = Math.max(5000, ...current.enrollments.map((e) => Number(String(e.id).slice(3)) || 0))
+      const fresh = people.filter((e) => !current.enrollments.some((x) => x.empId === e.id && x.courseId === course.id))
+      if (!fresh.length) bad('Everyone picked is already enrolled')
+      return { courseId: course.id, enrollments: fresh.map((e) => ({
+        id: 'EN-' + ++n, courseId: course.id, empId: e.id, employee: e.name, status: 'Not started', progress: 0,
+        assignedBy: actor.name, due, enrolledAt: today(), completedAt: null,
+      })) }
+    }
+    case 'course.enroll': {
+      const course = current.courses.find((c) => c.id === p.courseId) || bad('No such course')
+      if (current.enrollments.some((x) => x.empId === actor.id && x.courseId === course.id)) bad('You are already enrolled in ' + course.title)
+      const n = Math.max(5000, ...current.enrollments.map((e) => Number(String(e.id).slice(3)) || 0)) + 1
+      return { enrollment: { id: 'EN-' + n, courseId: course.id, empId: actor.id, employee: actor.name, status: 'Not started', progress: 0,
+        assignedBy: null, due: null, enrolledAt: today(), completedAt: null } }
+    }
+    case 'course.progress': {
+      const e = current.enrollments.find((x) => x.id === p.id) || bad('No such enrolment')
+      if (e.empId !== actor.id) forbidden('You can only update your own learning.')
+      if (e.status === 'Completed') bad('This course is already completed')
+      const progress = Number(p.progress)
+      if (!Number.isInteger(progress) || progress < 0 || progress > 100) bad('Progress must be 0 to 100')
+      return { id: e.id, progress, status: progress === 100 ? 'Completed' : progress > 0 ? 'In progress' : 'Not started', completedAt: progress === 100 ? today() : null }
+    }
+
+    // --- grievances --------------------------------------------------------------
+    // The raiser is always recorded (so they can follow their case), but an
+    // anonymous case never shows who raised it to anyone else - see visibleTo.
+    case 'grievance.add': {
+      const g = p.grievance || {}
+      const category = oneOf(g.category, GRIEVANCE_CATEGORIES) || bad('Pick a category')
+      const open = current.filter((x) => x.raisedById === actor.id && x.status === 'Submitted').length
+      if (open >= 5) bad('You already have 5 cases waiting to be picked up')
+      return { grievance: {
+        id: uniqueId(current, g.id, /^GR-\d+$/, 'GR-', 1000), category,
+        severity: severityFor(category, oneOf(g.severity, GRIEVANCE_SEVERITIES, 'Medium')),
+        subject: required(g.subject, 'Subject', 140), description: required(g.description, 'Description', 3000),
+        anonymous: !!g.anonymous, raisedById: actor.id, raisedBy: actor.name, created: today(),
+        status: 'Submitted', assignedTo: category === 'Harassment (POSH)' ? 'Internal Committee' : null, updates: [],
+      } }
+    }
+    case 'grievance.update': {
+      const g = find(current, p.id, 'Case')
+      if (g.raisedById === actor.id) forbidden('You cannot handle a case you raised.')
+      if (g.status === 'Closed') bad(g.id + ' is closed')
+      const status = oneOf(p.status, GRIEVANCE_STATUSES, g.status)
+      const note = str(p.note, 1500)
+      if (status !== g.status && !note) bad('Add a note explaining the change')
+      if (status === g.status && !note && str(p.assignedTo, 80) === (g.assignedTo || '')) bad('Nothing to update')
+      return { id: g.id, status, assignedTo: str(p.assignedTo, 80) || g.assignedTo || null,
+        update: note ? { at: new Date().toISOString(), by: actor.name, note, internal: !!p.internal, status } : null }
+    }
+    case 'grievance.reply': {
+      const g = find(current, p.id, 'Case')
+      if (g.raisedById !== actor.id) forbidden('You can only reply on your own case.')
+      if (g.status === 'Closed') bad(g.id + ' is closed')
+      // Replies from an anonymous raiser stay anonymous.
+      return { id: g.id, update: { at: new Date().toISOString(), by: g.anonymous ? 'Anonymous raiser' : actor.name, note: required(p.note, 'Reply', 1500), internal: false, fromRaiser: true } }
+    }
+
     case 'payroll.run': {
       const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(p.month) ? p.month : bad('Pick a month (YYYY-MM)')
       const now = new Date()
@@ -369,6 +447,17 @@ export function visibleTo(actor, collection, value) {
         payslips: value.payslips.filter((x) => x.empId === actor.id && paid.has(x.month)),
       }
     }
+    case 'training': return can(PERMS.HR_PEOPLE) ? value : { courses: value.courses, enrollments: value.enrollments.filter((e) => e.empId === actor.id) }
+    case 'grievances': {
+      const own = (g) => g.raisedById === actor.id
+      const shown = can(PERMS.HR_PEOPLE) ? value : value.filter(own)
+      return shown.map((g) => {
+        let out = g
+        if (!own(g) && g.anonymous) { const { raisedById: _id, raisedBy: _by, ...rest } = g; out = rest }
+        if (!can(PERMS.HR_PEOPLE) || own(g)) out = { ...out, updates: (out.updates || []).filter((u) => !u.internal) }
+        return out
+      })
+    }
     case 'tickets': return can(PERMS.HR_DESK) ? value : value.filter((t) => t.raisedById === actor.id || t.raisedBy === actor.name)
     case 'candidates':
     case 'requisitions': return can(PERMS.HR_HIRING) ? value : []
@@ -399,6 +488,16 @@ export function fanOut(type, payload, actor, before) {
       const t = before.find((x) => x.id === payload.id)
       return [{ to: (u) => u.id === t.raisedById && u.username !== actor.username, notification: { title: t.id + ' is now ' + payload.status, detail: t.subject, to: '/', kind: 'info' } }]
     }
+    case 'grievance.add': {
+      const g = payload.grievance
+      return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: 'New ' + g.severity.toLowerCase() + ' grievance ' + g.id, detail: g.category + (g.anonymous ? ' - anonymous' : ' - ' + actor.name), to: '/grievances', kind: g.severity === 'Critical' || g.severity === 'High' ? 'alert' : 'task' } }]
+    }
+    case 'grievance.update': {
+      const g = before.find((x) => x.id === payload.id)
+      return payload.update && !payload.update.internal ? [{ to: (u) => u.id === g.raisedById, notification: { title: 'Update on your case ' + g.id, detail: payload.status + ' - ' + payload.update.note.slice(0, 80), to: '/grievances', kind: 'info' } }] : []
+    }
+    case 'course.assign':
+      return [{ to: (u) => payload.enrollments.some((e) => e.empId === u.id) && u.username !== actor.username, notification: { title: 'Training assigned to you', detail: 'Due ' + payload.enrollments[0].due, to: '/learning', kind: 'task' } }]
     case 'candidate.decide':
       return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: payload.name + ' ' + (payload.decision === 'Hired' ? 'hired' : 'not selected'), detail: 'Decision by ' + actor.name, to: payload.decision === 'Hired' ? '/onboarding' : '/recruitment', kind: 'task' } }]
     case 'onboarding.start': {

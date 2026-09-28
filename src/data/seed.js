@@ -7,6 +7,7 @@ import {
 } from './mock.js'
 import { computeRun } from '../lib/hr/payroll.js'
 import { onboardingTasks, POLICIES, seedAppraisal } from '../lib/hr/people.js'
+import { seedTraining, SEED_GRIEVANCES } from '../lib/hr/growth.js'
 
 export const SEED_NOTIFICATIONS = [
   { id: 'n1', title: 'Leave request awaiting approval', detail: leaveRequests.find((r) => r.id === 'LV-2040').employee + ' applied for 1 day of Sick Leave', time: '12 min ago', to: '/leave', kind: 'leave', read: false },
@@ -66,6 +67,8 @@ export const SEED = {
   payroll: SEED_PAYROLL,
   onboarding: SEED_ONBOARDING,
   appraisals: employees.map(seedAppraisal),
+  training: seedTraining(employees),
+  grievances: SEED_GRIEVANCES.map((g) => ({ ...g, raisedBy: person(g.raisedById).name })),
   documents,
   notifications: SEED_NOTIFICATIONS,
   punch: { inAt: '09:34 AM', outAt: null },

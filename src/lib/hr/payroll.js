@@ -23,6 +23,9 @@ const BANDS = [
   [/executive|associate|inside sales/i, 4.5, 7.5],
 ]
 
+/** Where the person sits in their pay band, 0 (bottom) to 1 (top). */
+export const bandPosition = (emp) => rnd(emp.id + 'ctc')
+
 export function annualCtc(emp) {
   const band = BANDS.find(([re]) => re.test(emp.designation || '')) || [null, 6, 10]
   const lakh = band[1] + rnd(emp.id + 'ctc') * (band[2] - band[1])

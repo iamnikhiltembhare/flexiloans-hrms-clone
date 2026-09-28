@@ -26,6 +26,8 @@ import SystemAdmin from './pages/SystemAdmin.jsx'
 import NoAccess from './pages/NoAccess.jsx'
 import Assistant from './pages/Assistant.jsx'
 import Onboarding from './pages/Onboarding.jsx'
+import Learning from './pages/Learning.jsx'
+import Grievances from './pages/Grievances.jsx'
 
 function RequireAuth({ children }) {
   const { user } = useAuth()
@@ -61,6 +63,8 @@ export default function App() {
         <Route path="requests" element={<Require perm={PERMS.SELF}><RequestHub /></Require>} />
         <Route path="performance" element={<Require perm={PERMS.SELF}><Performance /></Require>} />
         <Route path="profile" element={<Require perm={PERMS.SELF}><Profile /></Require>} />
+        <Route path="learning" element={<Require perm={PERMS.SELF}><Learning /></Require>} />
+        <Route path="grievances" element={<Require perm={PERMS.SELF}><Grievances /></Require>} />
         <Route path="onboarding" element={<Require perm={PERMS.SELF}><Onboarding /></Require>} />
         <Route path="assistant" element={<Require perm={PERMS.SELF}><Assistant /></Require>} />
 

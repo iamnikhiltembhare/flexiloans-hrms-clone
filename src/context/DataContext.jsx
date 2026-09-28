@@ -21,7 +21,7 @@ const DataContext = createContext(null)
 const NAMES = Object.keys(COLLECTIONS)
 const POLL_MS = 30000
 
-const EMPTY = { ...Object.fromEntries(NAMES.map((n) => [n, []])), punch: { inAt: null, outAt: null }, payroll: { runs: [], payslips: [] } }
+const EMPTY = { ...Object.fromEntries(NAMES.map((n) => [n, []])), punch: { inAt: null, outAt: null }, payroll: { runs: [], payslips: [] }, training: { courses: [], enrollments: [] } }
 const loadLocal = () => Object.fromEntries(NAMES.map((n) => [n, readStored(n, SEED[n])]))
 
 let seq = 100
@@ -82,14 +82,16 @@ export function DataProvider({ children }) {
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
   }, [user, refresh, commit])
 
-  const dispatch = useCallback((type, payload) => {
+  // `raw`, when given, is what goes to the server instead of `payload` (the
+  // server always rebuilds the payload from the person's own input).
+  const dispatch = useCallback((type, payload, raw) => {
     const { collection, localOnly = [] } = ACTIONS[type]
     const { value, result } = applyAction(stateRef.current[collection], { type, payload })
     commit({ ...stateRef.current, [collection]: value })
 
     if (API_MODE) {
       pending.current++
-      const sent = localOnly.length ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => !localOnly.includes(k))) : payload
+      const sent = raw ?? (localOnly.length ? Object.fromEntries(Object.entries(payload || {}).filter(([k]) => !localOnly.includes(k))) : payload)
       // Concurrent replies can arrive out of order, and a quick one may show
       // the server from before a slower action landed. Use a reply only when
       // it is the only one in flight; otherwise reload once all have settled.
@@ -226,7 +228,7 @@ export function DataProvider({ children }) {
     const { collection } = ACTIONS[type]
     try {
       const clean = prepare(type, payload, actor, stateRef.current[collection] || [], stateRef.current)
-      return { ok: true, result: dispatch(type, clean) }
+      return { ok: true, result: dispatch(type, clean, payload) }
     } catch (err) {
       toast('Not saved', err.message, 'error')
       return { ok: false, error: err.message }

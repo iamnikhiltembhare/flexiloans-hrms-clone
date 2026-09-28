@@ -627,3 +627,90 @@ test('appraisals: goals, self review, then someone else completes the review', a
   assert.equal(after.appraisals[0].manager.by, hrUser.name)
   assert.match(after.notifications[0].title, /appraisal is complete/)
 })
+
+// --- training, grievances and alerts -------------------------------------------
+
+test('training: employees enrol and complete their own courses; HR assigns by skill gap', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const t = (await call('GET', '/api/state', { token: emp })).data.training
+  assert.ok(t.courses.length >= 10)
+  assert.ok(t.enrollments.every((e) => e.empId === 'FL1009'), 'employees see only their own enrolments')
+  assert.equal((await act(emp, 'course.add', { course: { title: 'X', skill: 'Y', hours: 2 } })).status, 403)
+
+  const course = t.courses.find((c) => !t.enrollments.some((e) => e.courseId === c.id))
+  const enrolled = await act(emp, 'course.enroll', { courseId: course.id })
+  assert.equal(enrolled.status, 200)
+  assert.equal((await act(emp, 'course.enroll', { courseId: course.id })).status, 400, 'no double enrolment')
+  const mine = enrolled.data.state.training.enrollments.find((e) => e.courseId === course.id)
+  const others = (await call('GET', '/api/state', { token: hr })).data.training.enrollments.find((e) => e.empId !== 'FL1009')
+  assert.equal((await act(emp, 'course.progress', { id: others.id, progress: 100 })).status, 403, 'not someone else\'s course')
+  const done = await act(emp, 'course.progress', { id: mine.id, progress: 100 })
+  assert.equal(done.data.state.training.enrollments.find((e) => e.id === mine.id).status, 'Completed')
+
+  const added = await act(hr, 'course.add', { course: { title: 'Credit bureau deep dive', skill: 'Credit underwriting', hours: 6 } })
+  assert.equal(added.status, 200)
+  const cid = added.data.state.training.courses.find((c) => c.title === 'Credit bureau deep dive').id
+  assert.equal((await act(hr, 'course.assign', { courseId: cid, empIds: ['FL1009'], due: 'soon' })).status, 400)
+  const assigned = await act(hr, 'course.assign', { courseId: cid, empIds: ['FL1009', 'FL1015', 'NOPE'], due: '2026-11-30' })
+  assert.equal(assigned.data.result, 2, 'unknown people are ignored')
+  const note = (await call('GET', '/api/state', { token: emp })).data.notifications[0]
+  assert.match(note.title, /Training assigned/)
+})
+
+test('grievances: confidential, anonymous cases hide the raiser everywhere, internal notes stay internal', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const admin = await login(...ADMIN)
+  const other = await login('rahul.patel', EMP[1])
+  const g = { category: 'Manager conduct', severity: 'Low', subject: 'Shouting in reviews', description: 'Happens weekly.', anonymous: true, raisedById: 'FL1050' }
+  const raised = await act(emp, 'grievance.add', { grievance: g })
+  assert.equal(raised.status, 200)
+  const id = raised.data.result
+  const own = raised.data.state.grievances.find((x) => x.id === id)
+  assert.equal(own.raisedById, 'FL1009', 'the raiser is always the signed-in person')
+  assert.equal(own.status, 'Submitted')
+
+  const hrView = (await call('GET', '/api/state', { token: hr })).data.grievances.find((x) => x.id === id)
+  assert.ok(hrView, 'HR sees the case')
+  assert.equal(hrView.raisedBy, undefined, 'but not who raised it')
+  assert.equal(hrView.raisedById, undefined)
+  assert.ok(!(await call('GET', '/api/state', { token: other })).data.grievances.some((x) => x.id === id), 'other employees never see it')
+  const audit = (await call('GET', '/api/admin/audit', { token: admin })).data.entries.find((e) => e.action === 'grievance.add')
+  assert.equal(audit.actor, 'Anonymous', 'the audit log does not reveal the raiser')
+
+  assert.equal((await act(emp, 'grievance.update', { id, status: 'Closed', note: 'x' })).status, 403, 'employees cannot handle cases')
+  assert.equal((await act(hr, 'grievance.update', { id, status: 'Under investigation' })).status, 400, 'status changes need a note')
+  await act(hr, 'grievance.update', { id, status: 'Under investigation', note: 'Speaking to the team', internal: false, assignedTo: 'Aarti Deshmukh' })
+  await act(hr, 'grievance.update', { id, status: 'Under investigation', note: 'Manager has a prior warning', internal: true })
+  const mine = (await call('GET', '/api/state', { token: emp })).data
+  const seen = mine.grievances.find((x) => x.id === id)
+  assert.equal(seen.updates.length, 1, 'the raiser does not see internal notes')
+  assert.match(mine.notifications[0].title, /Update on your case/)
+  const reply = await act(emp, 'grievance.reply', { id, note: 'It happened again today' })
+  assert.equal(reply.data.state.grievances.find((x) => x.id === id).updates.at(-1).by, 'Anonymous raiser')
+  assert.equal((await act(other, 'grievance.reply', { id, note: 'hi' })).status, 403)
+
+  const posh = await act(emp, 'grievance.add', { grievance: { category: 'Harassment (POSH)', severity: 'Low', subject: 'Messages', description: 'Details' } })
+  const p = posh.data.state.grievances.find((x) => x.id === posh.data.result)
+  assert.equal(p.severity, 'High', 'POSH cases are never below high')
+  assert.equal(p.assignedTo, 'Internal Committee')
+})
+
+test('alerts and attrition risk are computed from live data', async () => {
+  const { alertsFor, attritionRisk } = await import('../src/lib/hr/insights.js')
+  const { SEED } = await import('../src/data/seed.js')
+  const { PERMS } = await import('../src/data/accounts.js')
+  const today = '2026-09-28'
+  const hrAlerts = alertsFor(SEED, { user: { id: 'FL1003', name: 'Aarti Deshmukh' }, can: () => true, perms: PERMS, today, nowMin: 600 })
+  assert.equal(hrAlerts[0].level, 'critical', 'critical alerts come first')
+  assert.ok(hrAlerts.some((a) => a.id === 'gr-overdue'), 'grievances past SLA escalate')
+  const empAlerts = alertsFor(SEED, { user: { id: 'FL1009', name: 'Nikhil Tembhare' }, can: (p) => p === PERMS.SELF, perms: PERMS, today, nowMin: 600 })
+  assert.ok(!empAlerts.some((a) => a.id.startsWith('gr-') || a.id === 'pay-run'), 'employees get no HR alerts')
+  const notice = SEED.employees.find((e) => e.status === 'On Notice')
+  const r = attritionRisk(notice, { ...SEED, today })
+  assert.equal(r.level, 'High')
+  assert.ok(r.factors.every((f) => f.label && f.points > 0), 'every point is explained')
+})

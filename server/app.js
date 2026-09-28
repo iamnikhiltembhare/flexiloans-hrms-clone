@@ -177,7 +177,10 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
       await Promise.all(everyone.filter(to).map((u) => pushNotification(u.username, notification)))
     }
 
-    await audit(actor, type, targetOf(type, clean), via === 'assistant' ? 'assistant' : 'app')
+    // An anonymous grievance must not be traceable through the audit log either.
+    const hidden = (type === 'grievance.add' && clean.grievance.anonymous) || (type === 'grievance.reply' && before.find((g) => g.id === clean.id)?.anonymous)
+    const who = hidden ? { name: 'Anonymous', username: 'anonymous', role: 'employee' } : actor
+    await audit(who, type, targetOf(type, clean), via === 'assistant' ? 'assistant' : 'app')
     return { result, state: await stateFor(actor) }
   }
 
@@ -185,7 +188,7 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
   // Every change, and every question to the assistant, with who and when.
 
   const AUDIT_MAX = 500
-  const targetOf = (type, p) => p?.id || p?.name || p?.request?.id || p?.ticket?.id || p?.employee?.id
+  const targetOf = (type, p) => p?.id || p?.name || p?.grievance?.id || p?.record?.id || p?.course?.id || p?.courseId || p?.candidate?.name || p?.request?.id || p?.ticket?.id || p?.employee?.id
     || p?.requisition?.id || p?.announcement?.title || p?.document?.name || (type === 'punch.toggle' ? p?.date : '') || ''
   async function audit(actor, action, target, via, detail) {
     const entry = { id: 'AU-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: new Date().toISOString(),

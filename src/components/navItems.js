@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, CalendarCheck, CalendarDays, Wallet, FileText,
   Megaphone, Briefcase, Target, LifeBuoy, BarChart3, Settings, User, ShieldCheck, CalendarHeart,
-  Radio, Layers, Contact, Sparkles, ClipboardCheck,
+  Radio, Layers, Contact, Sparkles, ClipboardCheck, GraduationCap, ShieldAlert,
 } from 'lucide-react'
 import { PERMS } from '../data/accounts.js'
 
@@ -25,6 +25,8 @@ export const NAV_GROUPS = [
     { to: '/requests', label: 'Request Hub', short: 'Requests', icon: Layers, perm: PERMS.SELF, tint: '#EA580C' },
     { to: '/people', label: 'People', icon: Contact, perm: PERMS.SELF, tint: '#4F46E5' },
     { to: '/performance', label: 'Performance', icon: Target, perm: PERMS.SELF, tint: '#CA8A04' },
+    { to: '/learning', label: 'Learning', icon: GraduationCap, perm: PERMS.SELF, tint: '#2563EB' },
+    { to: '/grievances', label: 'Speak Up', icon: ShieldAlert, perm: PERMS.SELF, hideFor: PERMS.HR_PEOPLE, tint: '#B91C1C' },
     { to: '/onboarding', label: 'My Onboarding', short: 'Onboarding', icon: ClipboardCheck, perm: PERMS.SELF, hideFor: PERMS.HR_PEOPLE, tint: '#0D9488' },
     { to: '/profile', label: 'My Profile', short: 'Profile', icon: User, perm: PERMS.SELF, tint: '#0EA5E9' },
   ]},
@@ -32,6 +34,7 @@ export const NAV_GROUPS = [
     { to: '/employees', label: 'Employees', icon: Users, perm: PERMS.HR_PEOPLE, tint: '#1D4ED8' },
     { to: '/recruitment', label: 'Recruitment', icon: Briefcase, perm: PERMS.HR_HIRING, tint: '#9333EA' },
     { to: '/onboarding', label: 'Onboarding', icon: ClipboardCheck, perm: PERMS.HR_PEOPLE, tint: '#0D9488' },
+    { to: '/grievances', label: 'Grievances', icon: ShieldAlert, perm: PERMS.HR_PEOPLE, tint: '#B91C1C' },
     { to: '/helpdesk', label: 'Helpdesk', icon: LifeBuoy, perm: PERMS.HR_DESK, tint: '#E11D48' },
     { to: '/reports', label: 'Reports', icon: BarChart3, perm: PERMS.HR_REPORTS, tint: '#0D9488' },
   ]},
