@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Download, Wallet, TrendingUp, Receipt, PiggyBank, Play, BadgeCheck, Eye, Printer, Calculator } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
@@ -74,6 +75,9 @@ export default function Payroll() {
   const hr = can(PERMS.HR_PEOPLE)
   const [tab, setTab] = useState('My payslips')
   const [view, setView] = useState(null)
+  // ?payslip=PS-... (from the HR Assistant) opens that payslip straight away.
+  const [params, setParams] = useSearchParams()
+  const wanted = params.get('payslip')
 
   const me = employees.find((e) => e.id === user.id) || { ...user }
   const structure = useMemo(() => structureFor(me), [me])
@@ -82,6 +86,11 @@ export default function Payroll() {
   const runs = [...(payroll?.runs || [])].sort((a, b) => b.month.localeCompare(a.month))
   const statusOf = (month) => runs.find((r) => r.month === month)?.status || 'Paid'
   const latest = mine[0]
+  useEffect(() => {
+    if (!wanted) return
+    const slip = mine.find((p) => p.id === wanted)
+    if (slip) { setTab('My payslips'); setView(slip); setParams({}, { replace: true }) }
+  }, [wanted, mine, setParams])
 
   const exportMine = () => {
     downloadCSV('payslips-' + user.id + '.csv', [

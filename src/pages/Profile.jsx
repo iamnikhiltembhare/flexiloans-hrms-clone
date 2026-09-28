@@ -11,13 +11,33 @@ import { BRAND } from '../lib/brand.js'
 
 export default function Profile() {
   const { user } = useAuth()
-  const { documents, toast, notify, leaveRequests, payroll } = useApp()
+  const { documents, toast, leaveRequests, payroll, employees, hrAction, addTicket } = useApp()
+  const rec = employees.find((e) => e.id === user.id) || {}
+  const ec = rec.emergencyContact
   const leaveBalances = balancesFor(user.id, leaveRequests).map((b) => ({ ...b, total: b.granted }))
   const payslips = [...(payroll?.payslips || [])].filter((p) => p.empId === user.id).sort((a, b) => b.month.localeCompare(a.month))
     .map((p) => ({ ...p, month: monthLabel(p.month), deductions: p.totalDeductions, status: 'Paid' }))
   const [tab, setTab] = useState('Personal')
   const [open, setOpen] = useState(false)
-  const [req, setReq] = useState({ field: 'Personal mobile', value: '', note: '' })
+  const BLANK_REQ = { field: 'Personal mobile', value: '', name: '', relationship: '', note: '' }
+  const [req, setReq] = useState(BLANK_REQ)
+  // Mobile and emergency contact are yours to change; the rest need proof and HR.
+  const direct = req.field === 'Personal mobile' || req.field === 'Emergency contact'
+  const sendRequest = () => {
+    if (direct) {
+      const r = hrAction('profile.update', req.field === 'Personal mobile'
+        ? { personalPhone: req.value }
+        : { emergencyContact: { name: req.name, phone: req.value, relationship: req.relationship } })
+      if (!r.ok) return
+      toast('Profile updated', req.field + ' saved to your record')
+    } else {
+      if (!req.value.trim()) { toast('Add the new value', 'Say what it should be changed to', 'error'); return }
+      const id = addTicket({ subject: 'Update ' + req.field.toLowerCase() + ' to: ' + req.value.trim().slice(0, 100), category: 'HR Records', priority: 'Low' })
+      toast('Request raised', id + ' - upload the proof in the Document Center; HR updates it within 3 working days')
+    }
+    setReq(BLANK_REQ)
+    setOpen(false)
+  }
 
   return (
     <>
@@ -52,11 +72,11 @@ export default function Profile() {
             <Field label="Date of birth" value={user?.dob} />
             <Field label="Gender" value={user?.gender} />
             <Field label="Blood group" value={user?.bloodGroup} />
-            <Field label="Personal mobile" value={user?.phone} />
+            <Field label="Personal mobile" value={rec.personalPhone || user?.phone} />
             <Field label="Official email" value={user?.email} />
             <Field label="Current address" value="Andheri East, Mumbai 400069" />
-            <Field label="Emergency contact" value="Sunita Tembhare - +91 98330 22118" />
-            <Field label="Relationship" value="Spouse" />
+            <Field label="Emergency contact" value={ec ? ec.name + ' - ' + ec.phone : 'Not added yet'} />
+            <Field label="Relationship" value={ec?.relationship} />
           </div>
         </Card>
       )}
@@ -130,15 +150,10 @@ export default function Profile() {
         </Card>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Request a profile change" subtitle="HR Ops reviews changes to your record"
+      <Modal open={open} onClose={() => setOpen(false)} title="Change your details" subtitle={direct ? 'Saved to your record straight away - only you and HR can see it' : 'Needs proof, so HR Ops reviews it'}
         footer={<>
           <button className="btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="btn-primary" onClick={() => {
-            notify({ title: 'Profile change requested', detail: req.field + ' - pending HR Ops review', to: '/profile', kind: 'task' })
-            toast('Request sent', req.field + ' change is pending HR Ops review')
-            setReq({ field: 'Personal mobile', value: '', note: '' })
-            setOpen(false)
-          }}>Send request</button>
+          <button className="btn-primary" onClick={sendRequest}>{direct ? 'Save' : 'Send to HR'}</button>
         </>}>
         <div className="grid gap-3">
           <div><label className="label">Field</label>
@@ -147,8 +162,12 @@ export default function Profile() {
               <option>Bank account</option><option>Name spelling</option>
             </select>
           </div>
-          <div><label className="label">New value</label><input className="input" value={req.value} onChange={(e) => setReq({ ...req, value: e.target.value })} placeholder="What it should be changed to" /></div>
-          <div><label className="label">Note for HR</label><textarea className="input min-h-[80px]" value={req.note} onChange={(e) => setReq({ ...req, note: e.target.value })} /></div>
+          {req.field === 'Emergency contact' && <>
+            <div><label className="label">Contact name</label><input className="input" value={req.name} onChange={(e) => setReq({ ...req, name: e.target.value })} placeholder={ec?.name} /></div>
+            <div><label className="label">Relationship</label><input className="input" value={req.relationship} onChange={(e) => setReq({ ...req, relationship: e.target.value })} placeholder={ec?.relationship || 'Spouse, Father...'} /></div>
+          </>}
+          <div><label className="label">{direct ? 'Phone number' : 'New value'}</label><input className="input" value={req.value} onChange={(e) => setReq({ ...req, value: e.target.value })} placeholder={direct ? '+91 98200 12345' : 'What it should be changed to'} /></div>
+          {!direct && <p className="text-[11px] text-muted">This raises an HR Records ticket. Upload the proof (address proof, bank letter or ID) in the Document Center.</p>}
         </div>
       </Modal>
     </>

@@ -714,3 +714,71 @@ test('alerts and attrition risk are computed from live data', async () => {
   assert.equal(r.level, 'High')
   assert.ok(r.factors.every((f) => f.label && f.points > 0), 'every point is explained')
 })
+
+// --- employee self-service assistant -------------------------------------------
+
+test('assistant (built-in engine) handles the everyday employee questions', async () => {
+  const { call, login } = setupWith(createAssistant())
+  const emp = await login(...EMP)
+  let memory = {}
+  const ask = async (message) => {
+    const r = (await call('POST', '/api/assistant', { token: emp, body: { message, memory, today: '2026-09-28', nowMin: 600 } })).data
+    memory = { ...memory, leaveDraft: undefined, ...(r.memory || {}) }
+    return r
+  }
+  assert.match((await ask('How many casual leaves do I have left?')).reply, /days? of Casual Or Sick Leave left/)
+  assert.match((await ask('What is the work-from-home policy?')).reply, /2 days a week.*Source: Work from home policy/s)
+  assert.match((await ask('Where can I download my pay slip?')).reply, /Print or save PDF/)
+  const why = await ask('Why was my salary deduction higher this month?')
+  assert.ok(!why.refused, 'your own deductions are not a sensitive topic')
+  assert.match(why.reply, /deductions were Rs/)
+  assert.match((await ask('What are the company holidays this year?')).reply, /company holidays in 2026/)
+  assert.match((await ask('When is my performance review?')).reply, /2026-10-12/)
+  assert.match((await ask('Is there a policy on pet insurance for goldfish?')).reply, /rather not guess/)
+
+  // Leave: dates, then the assistant asks for type and reason, then proposes.
+  assert.match((await ask('Apply for leave from October 5 to October 7')).reply, /Which type of leave.*3 working days/)
+  assert.match((await ask('privilege')).reply, /What is the reason/)
+  const leave = await ask('visiting my parents in Nagpur')
+  assert.equal(leave.proposals[0].type, 'leave.add')
+  assert.equal(leave.proposals[0].payload.request.reason, 'visiting my parents in Nagpur')
+  assert.match((await ask('apply for casual leave on 2 October because of travel')).reply, /Gandhi Jayanti, a company holiday/)
+
+  const ticket = await ask('Create an HR ticket for a payroll problem.')
+  assert.equal(ticket.proposals[0].type, 'ticket.add')
+  assert.equal(ticket.proposals[0].payload.ticket.category, 'Payroll')
+  const contact = await ask('Update my emergency contact to Sunita Tembhare, +91 98330 22118, spouse')
+  assert.equal(contact.proposals[0].type, 'profile.update')
+  assert.match((await ask('What is Rahul\'s salary?')).reply, /outside what I can do/)
+  assert.match((await ask('Update my bank account')).reply, /outside what I can do/)
+})
+
+test('profile updates: only your own contact details, confirmed, and private to you and HR', async () => {
+  const { call, login, act } = setup()
+  const emp = await login(...EMP)
+  const other = await login('rahul.patel', EMP[1])
+  const hr = await login(...HR)
+  assert.equal((await act(emp, 'profile.update', { personalPhone: 'call me' })).status, 400)
+  assert.equal((await act(emp, 'profile.update', { designation: 'CEO' })).status, 400, 'only contact fields can change')
+  const ok = await act(emp, 'profile.update', { emergencyContact: { name: 'Asha Tembhare', phone: '+91 98111 22334', relationship: 'Mother' }, id: 'FL1050' })
+  assert.equal(ok.status, 200)
+  const mine = ok.data.state.employees.find((e) => e.id === 'FL1009')
+  assert.equal(mine.emergencyContact.name, 'Asha Tembhare')
+  assert.ok(!ok.data.state.employees.find((e) => e.id === 'FL1050').emergencyContact, 'the id in the payload is ignored')
+  const seen = (await call('GET', '/api/state', { token: other })).data.employees.find((e) => e.id === 'FL1009')
+  assert.equal(seen.emergencyContact, undefined, 'colleagues do not see it')
+  assert.equal(seen.personalPhone, undefined)
+  assert.equal((await call('GET', '/api/state', { token: hr })).data.employees.find((e) => e.id === 'FL1009').emergencyContact.phone, '+91 98111 22334')
+})
+
+test('leave counts working days and cannot overlap existing leave', async () => {
+  const { login, act } = setup()
+  const emp = await login(...EMP)
+  const fri = await act(emp, 'leave.add', { request: { type: 'Privilege Leave', from: '2026-10-09', to: '2026-10-12', reason: 'Trip' } })
+  assert.equal(fri.status, 200)
+  assert.equal(fri.data.state.leaveRequests.find((r) => r.from === '2026-10-09').days, 2, 'the weekend is not counted')
+  assert.equal((await act(emp, 'leave.add', { request: { type: 'Privilege Leave', from: '2026-10-12', to: '2026-10-13', reason: 'x' } })).status, 400, 'overlaps the earlier request')
+  const holiday = await act(emp, 'leave.add', { request: { type: 'Privilege Leave', from: '2026-10-02', to: '2026-10-02', reason: 'x' } })
+  assert.equal(holiday.status, 400)
+  assert.match(holiday.data.error, /holiday/)
+})

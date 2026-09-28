@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles, Send, Download, Check, X, Loader2, ShieldAlert, ArrowRight, Trash2, ChevronDown } from 'lucide-react'
+import { Sparkles, Send, Download, Check, X, Loader2, ShieldAlert, ArrowRight, Trash2, ChevronDown, BookOpen } from 'lucide-react'
 import { useApp } from '../../context/DataContext.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { Avatar, Badge, statusTone } from '../ui.jsx'
@@ -145,6 +145,39 @@ function TasksCard({ card, onNavigate }) {
   )
 }
 
+/** Knowledge-base answers: the policy text, with its source and date. */
+function PolicyCard({ card }) {
+  const [open, setOpen] = useState(false)
+  const [first, ...more] = card.rows
+  return (
+    <CardFrame title={<span className="inline-flex items-center gap-1.5"><BookOpen size={12} /> {first.title}</span>}
+      action={<span className="shrink-0 text-[10px] text-faint">Updated {first.updated}</span>}>
+      <p className={'px-3 py-2.5 text-[11.5px] leading-relaxed text-body ' + (open ? '' : 'line-clamp-4')}>{first.body}</p>
+      <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-1.5">
+        <button className="text-[11px] font-medium text-cyan-ink" onClick={() => setOpen(!open)}>{open ? 'Show less' : 'Read the full policy'}</button>
+        {more.map((m) => <span key={m.id} className="text-[10.5px] text-faint">Also see: {m.title}</span>)}
+      </div>
+    </CardFrame>
+  )
+}
+
+/** Links into the app, e.g. a payslip to view and download. */
+function LinksCard({ card, onNavigate }) {
+  return (
+    <CardFrame title={card.title}>
+      {card.rows.map((r) => (
+        <Link key={r.to + r.label} to={r.to} onClick={onNavigate} className="flex items-center gap-2.5 border-t first:border-t-0 border-line px-3 py-2 hover:bg-canvas">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12px] font-medium text-navy">{r.label}</span>
+            {r.detail && <span className="block truncate text-[10.5px] text-muted">{r.detail}</span>}
+          </span>
+          <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-cyan-ink">{r.action || 'Open'} <ArrowRight size={12} /></span>
+        </Link>
+      ))}
+    </CardFrame>
+  )
+}
+
 function ChecklistCard({ card }) {
   const [done, setDone] = useState({})
   const owners = [...new Set(card.rows.map((r) => r.owner))]
@@ -175,6 +208,8 @@ function ResultCard({ card, onNavigate }) {
   if (card.kind === 'people') return <PeopleCard card={card} onNavigate={onNavigate} />
   if (card.kind === 'tasks') return <TasksCard card={card} onNavigate={onNavigate} />
   if (card.kind === 'checklist') return <ChecklistCard card={card} />
+  if (card.kind === 'policy') return <PolicyCard card={card} />
+  if (card.kind === 'links') return <LinksCard card={card} onNavigate={onNavigate} />
   if (card.kind === 'note') return <CardFrame><p className="px-3 py-2.5 text-[12px] text-muted">{card.text}</p></CardFrame>
   return null
 }
@@ -245,7 +280,13 @@ export default function AssistantChat({ onNavigate }) {
     if (r.ok) {
       haptic('success')
       setDecisions((d) => ({ ...d, [p.id]: { status: 'done' } }))
-      push({ role: 'assistant', text: 'Done: ' + p.summary + '. Anyone affected has been notified.' })
+      const next = {
+        'leave.add': 'Submitted to HR for approval. You will get a notification when it is approved or rejected, and you can follow it under Leave.',
+        'ticket.add': 'Ticket ' + (r.result || '') + ' is open. You will be notified at every status change, and you can follow it in the Request Hub.',
+        'profile.update': 'Your record is updated. Only you and HR can see these details.',
+        'course.enroll': 'You are enrolled. Track it under Learning.',
+      }[p.type] || 'Anyone affected has been notified.'
+      push({ role: 'assistant', text: 'Done: ' + p.summary + '. ' + next })
     } else {
       setDecisions((d) => ({ ...d, [p.id]: { status: 'failed', error: r.error } }))
       push({ role: 'assistant', text: 'That did not go through: ' + r.error })
@@ -269,7 +310,8 @@ export default function AssistantChat({ onNavigate }) {
     setBusy(true)
     try {
       const r = await askAssistant(text, memory.current)
-      memory.current = { ...memory.current, ...(r.memory || {}) }
+      // A leave draft lasts only until the next answer that does not keep it.
+      memory.current = { ...memory.current, leaveDraft: undefined, ...(r.memory || {}) }
       if (r.engine && r.engine !== 'policy') setEngine(r.engine)
       push({ role: 'assistant', text: r.reply, cards: r.cards, proposals: r.proposals, engine: r.engine })
     } catch (err) {

@@ -147,7 +147,14 @@ export function DataProvider({ children }) {
   // assistant can say whether it worked. Same validation as the screens.
   const runAction = useCallback(async (type, payload, via = 'app') => {
     if (!API_MODE) {
-      const result = dispatch(type, payload)
+      // Offline, the same rules the server applies build and check the payload.
+      let clean
+      try {
+        clean = prepare(type, payload, { id: user?.id, name: me, username: user?.username, perms: user?.perms || [] }, stateRef.current[ACTIONS[type].collection], stateRef.current)
+      } catch (err) {
+        return { ok: false, error: err.message }
+      }
+      const result = dispatch(type, clean)
       if (via === 'assistant') logLocal(type, payload?.id || payload?.name || payload?.request?.from || '')
       return { ok: true, result }
     }
@@ -162,7 +169,7 @@ export function DataProvider({ children }) {
     } finally {
       pending.current = Math.max(0, pending.current - 1)
     }
-  }, [dispatch, commit, refresh, logLocal])
+  }, [dispatch, commit, refresh, logLocal, me, user])
 
   const listAudit = useCallback(async () => (API_MODE ? (await api('/api/admin/audit')).entries : readStored('auditLog', [])), [])
 

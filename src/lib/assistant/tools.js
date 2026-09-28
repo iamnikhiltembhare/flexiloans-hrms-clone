@@ -13,9 +13,14 @@
 
 import { PERMS } from '../../data/accounts.js'
 import { departments, locations, headcountTrend } from '../../data/mock.js'
-import { balancesFor, checkBalance, LEAVE_TYPES } from '../hr/leave.js'
-import { employeeDay as baseDay, holidaySet } from '../hr/attendance.js'
+import { balancesFor, checkBalance, LEAVE_TYPES, leaveDays, overlapping } from '../hr/leave.js'
+import { employeeDay as baseDay, holidaySet, isWorkingDay } from '../hr/attendance.js'
 import { TICKET_DESKS, needsAdminApproval, ticketClosed, CANDIDATE_STAGES } from '../actions.js'
+import { monthLabel } from '../hr/payroll.js'
+import { CYCLE_DATES, onboardingProgress } from '../hr/people.js'
+import { skillProfile } from '../hr/growth.js'
+import { companyHolidays } from '../../data/holidays.js'
+import { searchPolicies } from './policies.js'
 
 // --- helpers ------------------------------------------------------------
 
@@ -71,6 +76,8 @@ export const employeeDay = (emp, date, ctx) => baseDay(emp, date, dayCtx(ctx))
 // `schema` is the JSON Schema Claude sees; `run(input, ctx)` does the work.
 
 const str = (description) => ({ type: 'string', description })
+const INR = (n) => 'Rs ' + Math.round(n).toLocaleString('en-IN')
+const myPayslips = (ctx) => (ctx.state.payroll?.payslips || []).filter((p) => p.empId === ctx.actor.id).sort((a, b) => b.month.localeCompare(a.month))
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false })
 
 export const TOOLS = {
@@ -182,7 +189,7 @@ export const TOOLS = {
 
   leave_balance: {
     description: 'Leave balances by leave type. Anyone can see their own; HR can check another employee\'s.',
-    schema: obj({ employee: str('Employee name or id; omit for yourself') }),
+    schema: obj({ employee: str('Employee name or id; omit for yourself'), type: { type: 'string', enum: LEAVE_TYPES, description: 'One leave type, when the question is about one' } }),
     run(input, ctx) {
       let who = ctx.actor
       if (input.employee && findPeople([ctx.actor], input.employee).length === 0) {
@@ -193,8 +200,11 @@ export const TOOLS = {
       }
       const rows = balancesFor(who.id, ctx.state.leaveRequests, Number(ctx.today.slice(0, 4)))
         .map((l) => ({ type: l.type, granted: l.unlimited ? 'no limit' : l.granted, used: l.used, pending: l.pending, balance: l.unlimited ? 'no limit' : l.balance }))
+      const self = who.id === ctx.actor.id
       who = who.name
-      return { data: { employee: who, balances: rows }, card: { kind: 'table', title: 'Leave balance - ' + who, columns: ['type', 'granted', 'used', 'pending', 'balance'], rows } }
+      const one = input.type && rows.find((r) => r.type === pick(LEAVE_TYPES, input.type))
+      const asked = one && { ...one, available: one.balance === 'no limit' ? 'no limit' : Math.max(0, one.balance - one.pending) }
+      return { data: { employee: who, self, balances: rows, ...(asked ? { asked } : {}) }, card: { kind: 'table', title: 'Leave balance - ' + who, columns: ['type', 'granted', 'used', 'pending', 'balance'], rows } }
     },
   },
 
@@ -335,6 +345,191 @@ export const TOOLS = {
     },
   },
 
+  // --- employee self-service ---------------------------------------------
+
+  search_policies: {
+    description: 'Search the HR knowledge base (policies, handbook, FAQs): leave rules, work from home, attendance, holidays, payroll and deductions, tax, insurance and benefits, reimbursements, conduct, POSH, IT security, performance cycle, learning, onboarding documents, profile changes, resignation and notice period, and how to get help. Answer policy questions only from what this returns and name the policy you used. If nothing relevant comes back, say you do not know and offer to raise an HR ticket.',
+    schema: obj({ query: str('The question or topic, e.g. "work from home policy"') }, ['query']),
+    run(input) {
+      const hits = searchPolicies(input.query)
+      if (!hits.length) return { data: { found: 0, advice: 'Nothing in the knowledge base covers this. Do not guess; offer to create an HR ticket.' }, card: { kind: 'note', text: 'No policy covers "' + input.query + '". I can raise a ticket with HR for you.' } }
+      return {
+        data: { found: hits.length, articles: hits.map(({ id, title, category, updated, body }) => ({ id, title, category, updated, text: body })) },
+        card: { kind: 'policy', rows: hits.slice(0, 2).map(({ id, title, category, updated, body }) => ({ id, title, category, updated, body })) },
+      }
+    },
+  },
+
+  my_payslips: {
+    description: 'The signed-in person\'s own released payslips: month, paid days, loss-of-pay days, gross, deductions and net, with links to view and download each one. Only ever the person\'s own pay.',
+    schema: obj({ month: str('YYYY-MM for one month; omit for the latest few') }),
+    run(input, ctx) {
+      let list = myPayslips(ctx)
+      if (input.month) list = list.filter((p) => p.month === input.month)
+      if (!list.length) return { data: { found: 0, note: input.month ? 'No released payslip for ' + input.month + '. Payslips appear once payroll is marked paid, on the last working day.' : 'No payslips released yet.' }, card: { kind: 'note', text: 'No released payslip' + (input.month ? ' for ' + monthLabel(input.month) : '') + ' yet. Payslips appear once payroll is marked paid.' } }
+      const rows = list.slice(0, 6).map((p) => ({ id: p.id, month: monthLabel(p.month), paidDays: p.paidDays, lopDays: p.lopDays, gross: INR(p.gross), deductions: INR(p.totalDeductions), net: INR(p.net) }))
+      return {
+        data: { payslips: rows, how_to_download: 'Open Payroll > My payslips > View, then Print or save PDF - or use the links on the card.' },
+        card: { kind: 'links', title: 'Your payslips', rows: rows.map((r) => ({ label: r.month + ' - net ' + r.net, detail: 'Gross ' + r.gross + ', deductions ' + r.deductions + (r.lopDays ? ', ' + r.lopDays + ' LOP day' + (r.lopDays > 1 ? 's' : '') : ''), to: '/payroll?payslip=' + r.id, action: 'View and download' })) },
+      }
+    },
+  },
+
+  explain_payslip: {
+    description: 'Explain the signed-in person\'s own payslip for a month compared with the month before: which earnings and deductions changed and why (loss of pay, overtime, bonus, PF, ESI, TDS). Use for "why is my salary or deduction different this month". Only the person\'s own pay.',
+    schema: obj({ month: str('YYYY-MM; omit for the latest released payslip') }),
+    run(input, ctx) {
+      const list = myPayslips(ctx)
+      const i = input.month ? list.findIndex((p) => p.month === input.month) : 0
+      const cur = list[i]
+      if (!cur) return { data: { found: 0, note: 'That payslip is not released yet; payslips appear once payroll is marked paid. The latest released one is ' + (list[0] ? list[0].month : 'none') + '.' }, card: { kind: 'note', text: input.month ? monthLabel(input.month) + ' is not released yet. Your latest payslip is ' + (list[0] ? monthLabel(list[0].month) : 'not available') + '.' : 'No payslips released yet.' } }
+      const prev = list[i + 1]
+      const heads = (p, k) => Object.fromEntries((p?.[k] || []).map((x) => [x.head.replace(/ \(.*\)$/, ''), x.amount]))
+      const diff = (k) => {
+        const a = heads(prev, k); const b = heads(cur, k)
+        return [...new Set([...Object.keys(a), ...Object.keys(b)])].map((h) => ({ head: h, before: a[h] || 0, now: b[h] || 0, change: (b[h] || 0) - (a[h] || 0) })).filter((r) => r.change)
+      }
+      const earn = diff('earnings'); const ded = diff('deductions')
+      const reasons = []
+      if (prev && cur.lopDays !== prev.lopDays) reasons.push(cur.lopDays > prev.lopDays ? cur.lopDays + ' loss-of-pay day' + (cur.lopDays > 1 ? 's' : '') + ' reduced fixed pay (unapproved absence or leave without pay)' : 'fewer loss-of-pay days than last month')
+      if (earn.some((r) => r.head === 'Bonus' && r.change > 0)) reasons.push('a bonus was paid, which also raises the income tax (TDS) estimate')
+      if (earn.some((r) => r.head === 'Overtime' && r.change)) reasons.push('overtime pay changed')
+      if (ded.some((r) => r.head.startsWith('Income Tax') && r.change)) reasons.push('TDS is re-estimated every month from projected annual income')
+      if (ded.some((r) => r.head.startsWith('Provident') && r.change)) reasons.push('PF is 12% of the Basic earned that month (capped at 1,800), so it moves with loss-of-pay days')
+      const rows = [...earn.map((r) => ({ type: 'Earning', ...r })), ...ded.map((r) => ({ type: 'Deduction', ...r }))].map((r) => ({ ...r, before: INR(r.before), now: INR(r.now), change: (r.change > 0 ? '+' : '-') + INR(Math.abs(r.change)).slice(3) }))
+      return {
+        data: { month: cur.month, not_current: !input.month && cur.month !== ctx.today.slice(0, 7), compared_with: prev?.month || null, gross: cur.gross, deductions: cur.totalDeductions, net: cur.net, previous: prev ? { gross: prev.gross, deductions: prev.totalDeductions, net: prev.net } : null, lop_days: cur.lopDays, changes: rows, reasons, deduction_lines: cur.deductions },
+        card: { kind: 'table', title: monthLabel(cur.month) + (prev ? ' vs ' + monthLabel(prev.month) : '') + ' - net ' + INR(cur.net) + (prev ? ' (' + (cur.net >= prev.net ? '+' : '-') + INR(Math.abs(cur.net - prev.net)).slice(3) + ')' : ''), columns: ['type', 'head', 'before', 'now', 'change'], rows: rows.length ? rows : [{ type: '--', head: 'No change from last month', before: '', now: '', change: '' }] },
+      }
+    },
+  },
+
+  holidays: {
+    description: 'Company holiday calendar: fixed holidays (office closed) and optional/restricted holidays, for a year or just the upcoming ones.',
+    schema: obj({ year: { type: 'integer' }, upcoming_only: { type: 'boolean' }, include_optional: { type: 'boolean' } }),
+    run(input, ctx) {
+      const year = String(input.year || ctx.today.slice(0, 4))
+      let list = companyHolidays.filter((h) => h.date.startsWith(year))
+      if (input.upcoming_only) list = list.filter((h) => h.date >= ctx.today)
+      if (!input.include_optional) list = list.filter((h) => !h.optional)
+      const rows = list.map((h) => ({ date: h.date, day: parseISO(h.date).toLocaleDateString('en-IN', { weekday: 'short' }), name: h.name, type: h.optional ? 'Optional' + (h.scope ? ' (' + h.scope + ')' : '') : 'Holiday' }))
+      const next = companyHolidays.find((h) => !h.optional && h.date >= ctx.today)
+      return { data: { year, count: rows.length, next_holiday: next ? next.name + ' on ' + next.date : null, holidays: rows }, card: { kind: 'table', title: (input.upcoming_only ? 'Upcoming ' : '') + (input.include_optional ? 'holidays and optional holidays ' : 'company holidays ') + year, columns: ['date', 'day', 'name', 'type'], rows, csv: 'holidays-' + year } }
+    },
+  },
+
+  my_performance: {
+    description: 'The signed-in person\'s own appraisal for the current cycle: stage, deadlines (self review, manager review), goals with weights and progress, and past ratings. Use for "when is my performance review".',
+    schema: obj({}),
+    run(_input, ctx) {
+      const a = (ctx.state.appraisals || []).find((x) => x.empId === ctx.actor.id)
+      if (!a) return { data: { found: 0 }, card: { kind: 'note', text: 'No appraisal is open for you this cycle.' } }
+      const next = a.status === 'Goal setting' || a.status === 'Self review' ? 'Submit your self review by ' + CYCLE_DATES.selfReviewCloses
+        : a.status === 'Manager review' ? 'Your manager review is due by ' + CYCLE_DATES.managerReviewDue : 'This cycle is complete'
+      const rows = a.goals.map((g) => ({ goal: g.title, weight: g.weight + '%', progress: g.progress + '%', due: g.due }))
+      return {
+        data: { cycle: a.cycle, stage: a.status, next_step: next, deadlines: CYCLE_DATES, goals: rows, final_rating: a.manager?.rating ?? null, history: a.history },
+        card: { kind: 'links', title: a.cycle + ' - ' + a.status, rows: [{ label: next, detail: rows.length + ' goals, ' + Math.round(a.goals.reduce((s, g) => s + g.progress * g.weight, 0) / 100) + '% weighted progress', to: '/performance', action: 'Open Performance' }] },
+      }
+    },
+  },
+
+  my_learning: {
+    description: 'The signed-in person\'s own training: enrolled and assigned courses with progress and due dates, and skill gaps against their role with recommended courses.',
+    schema: obj({}),
+    run(_input, ctx) {
+      const t = ctx.state.training || { courses: [], enrollments: [] }
+      const title = (id) => t.courses.find((c) => c.id === id)?.title || id
+      const mine = t.enrollments.filter((e) => e.empId === ctx.actor.id).map((e) => ({ course: title(e.courseId), status: e.status, progress: e.progress + '%', due: e.due || '--' }))
+      const me = ctx.state.employees.find((e) => e.id === ctx.actor.id) || ctx.actor
+      const gaps = skillProfile(me, t).filter((s) => s.gap > 0).map((s) => ({ skill: s.skill, level: s.level, required: s.required, courses: s.courses.map((c) => c.id + ' ' + c.title) }))
+      return { data: { enrolments: mine, skill_gaps: gaps }, card: { kind: 'table', title: 'Your learning - ' + mine.length + ' course' + (mine.length === 1 ? '' : 's') + ', ' + gaps.length + ' skill gap' + (gaps.length === 1 ? '' : 's'), columns: ['course', 'status', 'progress', 'due'], rows: mine } }
+    },
+  },
+
+  my_onboarding: {
+    description: 'The signed-in person\'s own onboarding: checklist tasks still open (theirs and other teams\'), policies still to acknowledge, and documents submitted or pending verification.',
+    schema: obj({}),
+    run(_input, ctx) {
+      const rec = (ctx.state.onboarding || []).find((r) => r.empId === ctx.actor.id)
+      const docs = (ctx.state.documents || []).map((d) => ({ name: d.name, category: d.category, status: d.status }))
+      if (!rec) return { data: { onboarding: null, documents: docs }, card: docs.length ? { kind: 'table', title: 'Your documents', columns: ['name', 'category', 'status'], rows: docs } : { kind: 'note', text: 'You have no onboarding in progress.' } }
+      const p = onboardingProgress(rec)
+      const open = rec.tasks.filter((x) => !x.done).map((x) => ({ owner: x.owner, task: x.task, due: x.due }))
+      const acked = new Set((rec.acknowledgements || []).map((a) => a.policy))
+      return {
+        data: { status: rec.status, progress: p, open_tasks: open, policies_to_acknowledge: (rec.policies || []).filter((x) => !acked.has(x)), documents: docs },
+        card: { kind: 'checklist', title: 'Your onboarding - ' + p.done + ' of ' + p.total + ' done', rows: open },
+      }
+    },
+  },
+
+  propose_ticket: {
+    write: true,
+    description: 'Prepare a support ticket for the signed-in person - HR records, payroll, benefits, IT or finance. Use it for problems, requests, or questions the knowledge base cannot answer. Does not act - they must confirm.',
+    schema: obj({
+      category: { type: 'string', enum: Object.keys(TICKET_DESKS) },
+      subject: str('One line describing the problem'),
+      priority: { type: 'string', enum: ['Low', 'Medium', 'High'] },
+    }, ['category', 'subject']),
+    run(input) {
+      const category = pick(Object.keys(TICKET_DESKS), input.category) || 'HR Records'
+      const subject = String(input.subject || '').trim().slice(0, 160)
+      if (subject.length < 4) deny('What is the problem? I need a short description for the ticket.')
+      const priority = ['Low', 'Medium', 'High'].includes(input.priority) ? input.priority : 'Medium'
+      const desk = TICKET_DESKS[category].desk
+      return proposal({ type: 'ticket.add', payload: { ticket: { subject, category, priority } },
+        summary: 'Raise a ' + category + ' ticket: "' + subject + '"', detail: 'Goes to the ' + desk + ' with ' + priority.toLowerCase() + ' priority' + (needsAdminApproval(category) ? ' (handled by the ' + TICKET_DESKS[category].team + ' team)' : '') + '. You will be notified of updates.', tone: 'blue' })
+    },
+  },
+
+  propose_profile_update: {
+    write: true,
+    description: 'Prepare an update to the signed-in person\'s own personal mobile number or emergency contact (name, number, relationship). Does not act - they must confirm. Address, name and bank changes need proof: use propose_ticket (HR Records) for those.',
+    schema: obj({
+      personal_mobile: str('New personal mobile number'),
+      emergency_contact_name: str('Emergency contact name'),
+      emergency_contact_phone: str('Emergency contact number'),
+      emergency_contact_relationship: str('Relationship, e.g. Spouse, Father'),
+    }),
+    run(input, ctx) {
+      const phoneOk = (v) => /^\+?[0-9][0-9 -]{8,15}$/.test(String(v || '').trim())
+      const me = ctx.state.employees.find((e) => e.id === ctx.actor.id) || {}
+      const payload = {}
+      const lines = []
+      if (input.personal_mobile) {
+        if (!phoneOk(input.personal_mobile)) deny('"' + input.personal_mobile + '" does not look like a phone number.')
+        payload.personalPhone = input.personal_mobile.trim()
+        lines.push('personal mobile to ' + payload.personalPhone)
+      }
+      if (input.emergency_contact_name || input.emergency_contact_phone || input.emergency_contact_relationship) {
+        if (input.emergency_contact_phone && !phoneOk(input.emergency_contact_phone)) deny('"' + input.emergency_contact_phone + '" does not look like a phone number.')
+        const prev = me.emergencyContact || {}
+        const c = { name: input.emergency_contact_name || prev.name, phone: input.emergency_contact_phone?.trim() || prev.phone, relationship: input.emergency_contact_relationship || prev.relationship }
+        if (!c.name) deny('Who is the emergency contact? I need their name.')
+        if (!c.phone) deny('What is the emergency contact\'s phone number?')
+        payload.emergencyContact = c
+        lines.push('emergency contact to ' + c.name + (c.relationship ? ' (' + c.relationship + ')' : '') + ', ' + c.phone)
+      }
+      if (!lines.length) deny('What should I change? I can update your personal mobile number or your emergency contact.')
+      return proposal({ type: 'profile.update', payload, summary: 'Update your ' + lines.join(' and '), detail: 'Changes your own HRMS record. Only you and HR can see these details.', tone: 'blue' })
+    },
+  },
+
+  propose_course_enrollment: {
+    write: true,
+    description: 'Prepare enrolling the signed-in person in a course from the learning catalogue. Does not act - they must confirm.',
+    schema: obj({ course: str('Course id (e.g. CR-107) or title words') }, ['course']),
+    run(input, ctx) {
+      const t = ctx.state.training || { courses: [], enrollments: [] }
+      const q = lc(input.course)
+      const c = t.courses.find((x) => lc(x.id) === q) || t.courses.find((x) => lc(x.title).includes(q)) || t.courses.find((x) => lc(x.skill).includes(q))
+      if (!c) deny('No course matches "' + input.course + '". Ask me what is in the catalogue or open Learning.')
+      if (t.enrollments.some((e) => e.empId === ctx.actor.id && e.courseId === c.id)) deny('You are already enrolled in ' + c.title + '.')
+      return proposal({ type: 'course.enroll', payload: { courseId: c.id }, summary: 'Enrol in ' + c.title, detail: c.hours + ' h, ' + c.mode + ', ' + c.provider + '. Builds ' + c.skill + '.', tone: 'green' })
+    },
+  },
+
   // --- proposals (write actions, confirmed by the person) -----------------
 
   propose_leave_decision: {
@@ -408,17 +603,33 @@ export const TOOLS = {
 
   propose_leave_application: {
     write: true,
-    description: 'Prepare a leave application for the signed-in person. Does not act - they must confirm. Dates are YYYY-MM-DD.',
-    schema: obj({ type: { type: 'string', enum: LEAVE_TYPES }, from: str('Start date YYYY-MM-DD'), to: str('End date YYYY-MM-DD'), reason: str('Reason') }, ['type', 'from', 'to']),
+    description: 'Prepare a leave application for the signed-in person. It checks the balance, the work calendar (weekends and holidays are not counted) and clashes with existing leave. If the leave type or reason is missing it returns an error - ask the person for them instead of guessing. Does not act - they must confirm. Dates are YYYY-MM-DD.',
+    schema: obj({ type: { type: 'string', enum: LEAVE_TYPES }, from: str('Start date YYYY-MM-DD'), to: str('End date YYYY-MM-DD; same as from for one day'), reason: str('Reason') }, ['from']),
     run(input, ctx) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.from) || !/^\d{4}-\d{2}-\d{2}$/.test(input.to)) deny('I need the dates as YYYY-MM-DD.')
-      if (input.to < input.from) deny('The end date is before the start date.')
-      const days = Math.round((parseISO(input.to) - parseISO(input.from)) / 86400000) + 1
-      const type = pick(LEAVE_TYPES, input.type) || LEAVE_TYPES[0]
+      const to = input.to || input.from
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to)) deny('I need the dates as YYYY-MM-DD.')
+      if (to < input.from) deny('The end date is before the start date.')
+      if (input.from < ctx.today && !/sick|casual/i.test(input.type || '')) deny('Planned leave cannot start in the past. For a sick day already taken, choose Casual Or Sick Leave.')
+      const days = leaveDays(input.from, to)
+      const range = input.from + (to !== input.from ? ' to ' + to : '')
+      if (!days) {
+        const h = companyHolidays.find((x) => x.date === input.from && !x.optional)
+        deny(input.from === to ? input.from + ' is ' + (h ? h.name + ', a company holiday' : 'a weekend') + ' - no leave is needed.' : 'Every day from ' + range + ' is a weekend or holiday - no leave is needed.')
+      }
+      const clash = overlapping(ctx.actor.id, input.from, to, ctx.state.leaveRequests)
+      if (clash) deny('You already have ' + clash.status.toLowerCase() + ' leave ' + clash.id + ' from ' + clash.from + ' to ' + clash.to + '.')
+      const balances = balancesFor(ctx.actor.id, ctx.state.leaveRequests, Number(input.from.slice(0, 4))).filter((b) => b.unlimited || b.balance - b.pending > 0)
+      const type = input.type && pick(LEAVE_TYPES, input.type)
+      if (!type) deny('Which type of leave for ' + range + ' (' + days + ' working day' + (days > 1 ? 's' : '') + ')? Available: ' + balances.map((b) => b.type + (b.unlimited ? '' : ' (' + (b.balance - b.pending) + ' left)')).join(', ') + '. And what is the reason?')
+      if (!String(input.reason || '').trim()) deny('What is the reason for the ' + type + ' on ' + range + '? It goes to HR with the request.')
       const balance = checkBalance(ctx.actor.id, type, days, ctx.state.leaveRequests, Number(input.from.slice(0, 4)))
       if (!balance.ok) deny(balance.message)
-      return proposal({ type: 'leave.add', payload: { request: { type, from: input.from, to: input.to, days, reason: input.reason || 'Personal', employee: ctx.actor.name, empId: ctx.actor.id } },
-        summary: 'Apply for ' + days + ' day' + (days > 1 ? 's' : '') + ' of ' + type + ' (' + input.from + (input.to !== input.from ? ' to ' + input.to : '') + ')', detail: 'Goes to HR for approval.', tone: 'blue' })
+      const skipped = []
+      for (let d = parseISO(input.from); ymd(d) <= to; d.setDate(d.getDate() + 1)) if (!isWorkingDay(ymd(d))) skipped.push(ymd(d))
+      const left = balance.available === Infinity ? null : balance.available - days
+      return proposal({ type: 'leave.add', payload: { request: { type, from: input.from, to, days, reason: input.reason.trim(), employee: ctx.actor.name, empId: ctx.actor.id } },
+        summary: 'Apply for ' + days + ' day' + (days > 1 ? 's' : '') + ' of ' + type + ' (' + range + ')',
+        detail: 'Reason: ' + input.reason.trim() + '. ' + (skipped.length ? skipped.length + ' weekend or holiday day' + (skipped.length > 1 ? 's are' : ' is') + ' not counted. ' : '') + (left != null ? left + ' day' + (left === 1 ? '' : 's') + ' will be left. ' : '') + 'Goes to HR for approval; you will be notified of the decision.', tone: 'blue' })
     },
   },
 }
@@ -450,7 +661,10 @@ export const toolSchemas = () => Object.entries(TOOLS).map(([name, t]) => ({ nam
 // data, are never handled by the assistant - whatever the role.
 
 const SENSITIVE = [
-  [/\b(salary|salaries|ctc|pay\s*(hike|raise|cut|revision)|increment|compensation|bonus)\b/i, 'Salary and compensation changes'],
+  // Changing anyone's pay, or looking at someone else's. Questions about your
+  // own payslip ("why is my deduction higher?") are fine.
+  [/\b(salary|salaries|ctc|pay|compensation|bonus|wage)s?\s*(hike|raise|cut|revision|increase|increment|change|correction)\b|\b(increase|raise|revise|cut|reduce|change|update|set|modify|double|approve)\b[^.?!]{0,40}\b(salary|salaries|ctc|compensation|bonus|pay)\b|\bincrement\b/i, 'Salary and compensation changes'],
+  [/\b(?!my\b|me\b)[a-z]+'s\s+(salary|ctc|pay\s*slip|payslip|compensation|bonus)\b|\b(salary|ctc|payslip|compensation)\s+(of|for)\s+(?!me\b|my\b)[a-z]+|\b(everyone|all|team|department|employees)('s)?\s+(salar|ctc|pay)/i, 'Other people\'s salaries'],
   [/\b(terminat\w*|fire|firing|sack|dismiss\w*|let go|lay\s*off|layoff)\b/i, 'Terminations'],
   [/\b(disciplin\w*|warning letter|show cause|pip|performance improvement plan)\b/i, 'Disciplinary decisions'],
   [/\b(promot\w*|demot\w*)\b/i, 'Promotions and demotions'],

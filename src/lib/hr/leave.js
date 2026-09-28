@@ -4,6 +4,7 @@
 // requests are shown separately and count against what can still be applied.
 
 import { leaveBalances } from '../../data/mock.js'
+import { isWorkingDay } from './attendance.js'
 
 export const LEAVE_POLICY = leaveBalances.map(({ type, code, granted, color, bar }) => ({ type, code, granted, color, bar }))
 export const LEAVE_TYPES = LEAVE_POLICY.map((l) => l.type)
@@ -49,3 +50,19 @@ export function checkBalance(empId, type, days, leaveRequests, year) {
   if (days <= available) return { ok: true, available }
   return { ok: false, available, message: 'Only ' + available + ' day' + (available === 1 ? '' : 's') + ' of ' + row.type + ' left' + (row.pending ? ' after ' + row.pending + ' pending' : '') + '; this request is ' + days + '.' }
 }
+
+/** Working days in a request: weekends and company holidays are not counted. */
+export function leaveDays(from, to) {
+  const [y, m, d] = from.split('-').map(Number)
+  let n = 0
+  for (let day = new Date(y, m - 1, d); ; day.setDate(day.getDate() + 1)) {
+    const iso = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0')
+    if (iso > to) break
+    if (isWorkingDay(iso)) n++
+  }
+  return n
+}
+
+/** A pending or approved request of this person's that overlaps the dates, if any. */
+export const overlapping = (empId, from, to, leaveRequests = []) =>
+  leaveRequests.find((r) => r.empId === empId && ['Pending', 'Approved'].includes(r.status) && r.from <= to && r.to >= from) || null

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Check, X, Download, ArrowUpRight } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, Tabs, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
-import { balancesFor, checkBalance, LEAVE_TYPES } from '../lib/hr/leave.js'
+import { balancesFor, checkBalance, LEAVE_TYPES, leaveDays, overlapping } from '../lib/hr/leave.js'
 import { companyHolidays, prettyDate, weekdayOf } from '../data/holidays.js'
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/DataContext.jsx'
@@ -34,7 +34,10 @@ export default function Leave() {
     e.preventDefault()
     if (!form.from || !form.to) { setErr('Pick both a start and an end date.'); return }
     if (new Date(form.to) < new Date(form.from)) { setErr('The end date cannot be before the start date.'); return }
-    const days = Math.max(1, Math.round((new Date(form.to) - new Date(form.from)) / 86400000) + 1)
+    const days = leaveDays(form.from, form.to)
+    if (!days) { setErr('Those dates are weekends or company holidays - no leave is needed.'); return }
+    const clash = overlapping(user.id, form.from, form.to, leaveRequests)
+    if (clash) { setErr('You already have ' + clash.status.toLowerCase() + ' leave from ' + clash.from + ' to ' + clash.to + '.'); return }
     const balance = checkBalance(user.id, form.type, days, leaveRequests, Number(form.from.slice(0, 4)))
     if (!balance.ok) { setErr(balance.message); return }
     addLeaveRequest({

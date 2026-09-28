@@ -50,6 +50,7 @@ export const COLLECTIONS = {
 
 export const ACTIONS = {
   'employee.add': { collection: 'employees', perm: PERMS.HR_PEOPLE },
+  'profile.update': { collection: 'employees', perm: PERMS.SELF },
   'leave.add': { collection: 'leaveRequests', perm: PERMS.SELF },
   'leave.setStatus': { collection: 'leaveRequests', perm: PERMS.HR_PEOPLE },
   'ticket.add': { collection: 'tickets', perm: PERMS.SELF },
@@ -99,6 +100,7 @@ const withStatus = (r) => {
 
 const REDUCERS = {
   'employee.add': (list, { employee }) => ({ value: [employee, ...list] }),
+  'profile.update': (list, { id, changes }) => ({ value: list.map((e) => (e.id === id ? { ...e, ...changes } : e)), result: Object.keys(changes) }),
 
   'leave.add': (list, { request }) => ({ value: [request, ...list] }),
 

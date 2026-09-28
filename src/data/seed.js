@@ -56,8 +56,12 @@ const onboard = (empId, n, doneUpTo, acks) => {
 }
 const SEED_ONBOARDING = [onboard('FL1050', 1003, 7, 2), onboard('FL1005', 1002, 9, 4), onboard('FL1059', 1001, 99, 4)]
 
+// The demo employee's contact details, so the profile has something to update.
+const SEED_EMPLOYEES = employees.map((e) => (e.id === 'FL1009'
+  ? { ...e, personalPhone: '+91 98200 31009', emergencyContact: { name: 'Sunita Tembhare', phone: '+91 98330 22118', relationship: 'Spouse' } } : e))
+
 export const SEED = {
-  employees,
+  employees: SEED_EMPLOYEES,
   leaveRequests,
   tickets,
   announcements,

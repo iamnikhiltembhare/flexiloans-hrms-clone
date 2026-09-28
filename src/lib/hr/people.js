@@ -53,6 +53,8 @@ export function onboardingProgress(rec) {
 // --- appraisals ----------------------------------------------------------------
 
 export const CYCLE = 'Mid-year FY 2026-27'
+// Deadlines for the current cycle, shown in the app and by the HR Assistant.
+export const CYCLE_DATES = { goalsDue: '2026-09-30', selfReviewCloses: '2026-10-12', managerReviewDue: '2026-10-24' }
 export const COMPETENCIES = ['Customer focus', 'Execution', 'Collaboration', 'Ownership', 'Communication']
 export const APPRAISAL_STAGES = ['Goal setting', 'Self review', 'Manager review', 'Completed']
 

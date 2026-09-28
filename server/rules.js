@@ -3,7 +3,7 @@
 // authoritative (who raised it, its status, the date) is set by the server.
 
 import { PERMS } from '../src/data/accounts.js'
-import { checkBalance } from '../src/lib/hr/leave.js'
+import { checkBalance, leaveDays, overlapping } from '../src/lib/hr/leave.js'
 import { computeRun, monthLabel } from '../src/lib/hr/payroll.js'
 import { COURSE_MODES, GRIEVANCE_CATEGORIES, GRIEVANCE_SEVERITIES, GRIEVANCE_STATUSES, severityFor } from '../src/lib/hr/growth.js'
 import { INTERVIEW_ROUNDS, INTERVIEW_MODES, RECOMMENDATIONS, CANDIDATE_SOURCES, POLICIES, COMPETENCIES, candidateRating, onboardingTasks } from '../src/lib/hr/people.js'
@@ -69,13 +69,37 @@ export function prepare(type, payload, actor, current, extra = {}) {
       } }
     }
 
+    // People may change only their own low-risk contact details. Address,
+    // name and bank changes need proof, so they go to HR as a ticket.
+    case 'profile.update': {
+      const me = current.find((e) => e.id === actor.id) || bad('Your employee record was not found')
+      const phone = (v, field) => { const x = str(v, 20); return /^\+?[0-9][0-9 -]{8,15}$/.test(x) ? x : bad(field + ' must be a phone number like +91 98200 12345') }
+      const changes = {}
+      if (p.personalPhone != null) changes.personalPhone = phone(p.personalPhone, 'Personal mobile')
+      if (p.emergencyContact) {
+        const c = p.emergencyContact
+        const prev = me.emergencyContact || {}
+        changes.emergencyContact = {
+          name: str(c.name, 80) || prev.name || bad('Emergency contact name is required'),
+          phone: c.phone ? phone(c.phone, 'Emergency contact number') : prev.phone || bad('Emergency contact number is required'),
+          relationship: str(c.relationship, 30) || prev.relationship || 'Not given',
+        }
+      }
+      if (!Object.keys(changes).length) bad('Nothing to update - only your personal mobile and emergency contact can be changed here')
+      return { id: me.id, changes: { ...changes, profileUpdatedAt: new Date().toISOString() } }
+    }
+
     case 'leave.add': {
       const r = p.request || {}
       const from = isoDate(r.from, 'Start date')
       const to = isoDate(r.to, 'End date')
       if (to < from) bad('The end date cannot be before the start date')
-      const days = Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1
-      if (days > 60) bad('A single request cannot exceed 60 days')
+      if (Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1 > 60) bad('A single request cannot exceed 60 days')
+      // Only working days count; weekends and company holidays are free.
+      const days = leaveDays(from, to)
+      if (!days) bad(from === to ? from + ' is a weekend or company holiday - no leave is needed' : 'Those dates are all weekends or company holidays - no leave is needed')
+      const clash = overlapping(actor.id, from, to, current)
+      if (clash) bad('You already have ' + clash.status.toLowerCase() + ' leave ' + clash.id + ' from ' + clash.from + ' to ' + clash.to)
       const type = required(r.type, 'Leave type', 40)
       const balance = checkBalance(actor.id, type, days, current, Number(from.slice(0, 4)))
       if (!balance.ok) bad(balance.message)
@@ -458,6 +482,8 @@ export function visibleTo(actor, collection, value) {
         return out
       })
     }
+    // Contact details are private: others see the directory without them.
+    case 'employees': return can(PERMS.HR_PEOPLE) ? value : value.map((e) => (e.id === actor.id ? e : (({ personalPhone: _p, emergencyContact: _c, ...rest }) => rest)(e)))
     case 'tickets': return can(PERMS.HR_DESK) ? value : value.filter((t) => t.raisedById === actor.id || t.raisedBy === actor.name)
     case 'candidates':
     case 'requisitions': return can(PERMS.HR_HIRING) ? value : []

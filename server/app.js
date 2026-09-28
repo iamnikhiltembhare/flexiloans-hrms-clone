@@ -217,7 +217,16 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     const nowMin = Number.isInteger(b.nowMin) && b.nowMin >= 0 && b.nowMin < 1440 ? b.nowMin : null
     const ctx = { actor, state: await stateFor(actor), today: localToday, nowMin }
     const history = ((await store.get(chatKey(actor.username))) || []).map((m) => ({ role: m.role, text: m.text }))
-    const memory = b.memory && typeof b.memory === 'object' && Array.isArray(b.memory.pending) ? { pending: b.memory.pending.slice(0, 20).map(String) } : {}
+    // Short-term memory from the app: the last list shown, and a leave
+    // application still being filled in. Only these known shapes are kept.
+    const m = b.memory && typeof b.memory === 'object' ? b.memory : {}
+    const memory = {}
+    if (Array.isArray(m.pending)) memory.pending = m.pending.slice(0, 20).map(String)
+    if (m.leaveDraft && typeof m.leaveDraft === 'object') {
+      const d = m.leaveDraft
+      const iso = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined)
+      memory.leaveDraft = { from: iso(d.from), to: iso(d.to), type: typeof d.type === 'string' ? d.type.slice(0, 40) : undefined, reason: typeof d.reason === 'string' ? d.reason.slice(0, 300) : undefined }
+    }
 
     const out = await assistant.answer({ message, history, ctx, memory })
     const at = new Date().toISOString()
