@@ -8,7 +8,7 @@ export function PageHeader({ title, subtitle, actions }) {
         <h1 className="h1">{title}</h1>
         {subtitle && <p className="text-[13px] text-muted mt-1">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }

@@ -1,17 +1,29 @@
-import { useState } from 'react'
-import { Plus, Briefcase, Users, FileCheck, Timer, Star, Download } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Plus, Briefcase, Users, FileCheck, Timer, Star, Download, UserPlus, CalendarClock, Video } from 'lucide-react'
 import { PageHeader, Card, Table, Badge, StatCard, Tabs, Avatar, statusTone } from '../components/ui.jsx'
 import Modal from '../components/Modal.jsx'
 import { useApp } from '../context/DataContext.jsx'
 import { departments, locations } from '../data/mock.js'
 import { downloadCSV } from '../lib/download.js'
+import CandidateModal, { AddCandidateModal } from './recruitment/CandidateModal.jsx'
 
-const STAGES = ['Sourcing', 'Screening', 'Interviewing', 'Offer', 'Hired']
 const BLANK = { role: '', dept: 'Engineering', location: 'Mumbai HQ', type: 'Permanent', priority: 'Medium', count: '1' }
 
 export default function Recruitment() {
   const { requisitions: reqs, addRequisition, candidates, advanceCandidate, toast, notify } = useApp()
-  const [tab, setTab] = useState('Open requisitions')
+  const [tab, setTab] = useState('Candidate pipeline')
+  const [picked, setPicked] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const current = candidates.find((c) => c.name === picked) || null
+  const active = candidates.filter((c) => (c.status || 'Active') === 'Active')
+  const upcoming = useMemo(() => candidates
+    .flatMap((c) => (c.interviews || []).filter((iv) => iv.status === 'Scheduled').map((iv) => ({ ...iv, candidate: c.name, role: c.role })))
+    .sort((a, b) => a.at.localeCompare(b.at)), [candidates])
+  // Funnel: how many candidates reached each stage (a hire passed every stage).
+  const funnel = useMemo(() => {
+    const order = ['Shortlisted', 'Tech Screen', 'HR Round', 'Final Round', 'Offer Rolled', 'Hired']
+    return order.map((s, i) => ({ stage: s, count: candidates.filter((c) => order.indexOf(c.stage) >= i).length }))
+  }, [candidates])
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
   const [err, setErr] = useState('')
@@ -54,18 +66,19 @@ export default function Recruitment() {
         subtitle="Requisitions, pipeline and offers"
         actions={<>
           <button className="btn-secondary" onClick={exportReqs}><Download size={13} /> Export</button>
-          <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={13} /> Raise requisition</button>
+          <button className="btn-secondary" onClick={() => setOpen(true)}><Plus size={13} /> Raise requisition</button>
+          <button className="btn-primary" onClick={() => setAdding(true)}><UserPlus size={13} /> Add candidate</button>
         </>}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-4 stagger">
         <StatCard label="Open requisitions" value={reqs.length} hint={reqs.filter((r) => r.priority === 'High').length + ' marked high priority'} icon={Briefcase} tone="cyan" />
-        <StatCard label="Active candidates" value={reqs.reduce((s, o) => s + o.applicants, 0)} hint="across all stages" icon={Users} tone="blue" />
-        <StatCard label="Offers in flight" value={candidates.filter((c) => c.stage === 'Offer Rolled').length + 3} hint="1 awaiting sign-off" icon={FileCheck} tone="green" />
-        <StatCard label="Avg time to hire" value="34d" hint="target 30 days" icon={Timer} tone="amber" />
+        <StatCard label="Active candidates" value={active.length} hint={candidates.filter((c) => c.status === 'Hired').length + ' hired, ' + candidates.filter((c) => c.status === 'Rejected').length + ' rejected'} icon={Users} tone="blue" />
+        <StatCard label="Offers in flight" value={active.filter((c) => c.stage === 'Offer Rolled').length} hint="awaiting a hire decision" icon={FileCheck} tone="green" />
+        <StatCard label="Interviews scheduled" value={upcoming.length} hint={upcoming[0] ? 'next: ' + upcoming[0].candidate : 'none coming up'} icon={Timer} tone="amber" />
       </div>
 
-      <Tabs tabs={['Open requisitions', 'Candidate pipeline', 'Hiring funnel']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Candidate pipeline', 'Interviews', 'Open requisitions', 'Hiring funnel']} active={tab} onChange={setTab} />
 
       {tab === 'Open requisitions' && (
         <Card bodyClass="p-0">
@@ -91,24 +104,27 @@ export default function Recruitment() {
           <Table
             columns={[
               { key: 'name', header: 'Candidate', render: (r) => (
-                <span className="flex items-center gap-2.5">
+                <button className="flex items-center gap-2.5 text-left" onClick={() => setPicked(r.name)}>
                   <Avatar name={r.name} size={30} />
                   <span>
-                    <span className="block text-[13px] font-medium text-navy">{r.name}</span>
+                    <span className="block text-[13px] font-medium text-navy hover:underline">{r.name}</span>
                     <span className="block text-[11px] text-muted">{r.source}</span>
                   </span>
-                </span>
+                </button>
               )},
               { key: 'role', header: 'Applied for' },
               { key: 'stage', header: 'Stage', render: (r) => <Badge tone={r.stage === 'Hired' ? 'green' : 'blue'}>{r.stage}</Badge> },
-              { key: 'rating', header: 'Rating', render: (r) => (
-                <span className="flex items-center gap-1 font-mono text-xs text-navy"><Star size={12} className="text-[#D97706] fill-[#D97706]" />{r.rating}</span>
+              { key: 'status', header: 'Status', render: (r) => <Badge tone={r.status === 'Hired' ? 'green' : r.status === 'Rejected' ? 'red' : 'gray'}>{r.status || 'Active'}</Badge> },
+              { key: 'rating', header: 'Score', render: (r) => (
+                <span className="flex items-center gap-1 font-mono text-xs text-navy"><Star size={12} className="text-[#D97706] fill-[#D97706]" />{r.rating ?? '--'}</span>
               )},
+              { key: 'rounds', header: 'Interviews', render: (r) => <span className="text-[12px] text-muted">{(r.evaluations || []).length} scored / {(r.interviews || []).length} booked</span> },
               { key: 'applied', header: 'Applied on', mono: true },
               { key: 'action', header: '', align: 'right', render: (r) => (
-                <button className="btn-secondary px-2 py-1" onClick={() => move(r)} disabled={r.stage === 'Hired'}>
-                  {r.stage === 'Hired' ? 'Hired' : 'Move stage'}
-                </button>
+                <span className="flex justify-end gap-1.5">
+                  {(r.status || 'Active') === 'Active' && r.stage !== 'Offer Rolled' && <button className="btn-ghost px-2 py-1" onClick={() => move(r)}>Next stage</button>}
+                  <button className="btn-secondary px-2 py-1" onClick={() => setPicked(r.name)}>Open</button>
+                </span>
               )},
             ]}
             rows={candidates}
@@ -116,18 +132,34 @@ export default function Recruitment() {
         </Card>
       )}
 
+      {tab === 'Interviews' && (
+        <Card title="Upcoming interviews" subtitle="Everything scheduled across the pipeline" bodyClass="p-0">
+          <Table
+            empty="No interviews scheduled. Open a candidate to book one."
+            columns={[
+              { key: 'at', header: 'When', mono: true, render: (r) => <span className="flex items-center gap-1.5"><CalendarClock size={13} className="text-faint" />{r.at.replace('T', ' ')}</span> },
+              { key: 'candidate', header: 'Candidate', render: (r) => <button className="text-navy font-medium hover:underline" onClick={() => setPicked(r.candidate)}>{r.candidate}</button> },
+              { key: 'role', header: 'Role' },
+              { key: 'round', header: 'Round', render: (r) => <Badge tone="blue">{r.round}</Badge> },
+              { key: 'interviewer', header: 'Interviewer' },
+              { key: 'mode', header: 'Mode', render: (r) => <span className="flex items-center gap-1 text-[12px] text-muted"><Video size={12} />{r.mode}</span> },
+            ]}
+            rows={upcoming}
+          />
+        </Card>
+      )}
+
       {tab === 'Hiring funnel' && (
-        <Card title="Pipeline by stage" subtitle="All open requisitions combined">
+        <Card title="Pipeline by stage" subtitle="Candidates who reached each stage, with conversion from the first">
           <div className="space-y-3 max-w-2xl">
-            {STAGES.map((s, i) => {
-              const count = [260, 148, 62, 9, 5][i]
-              const pct = (count / 260) * 100
+            {funnel.map(({ stage: s, count }, i) => {
+              const pct = funnel[0].count ? (count / funnel[0].count) * 100 : 0
               return (
                 <div key={s} className="flex items-center gap-3">
                   <span className="w-24 shrink-0 text-[12px] text-muted">{s}</span>
                   <div className="flex-1 h-7 rounded-lg bg-canvas overflow-hidden">
                     <div className="h-full rounded-lg flex items-center px-2.5 text-[11px] font-medium text-white"
-                      style={{ width: Math.max(pct, 8) + '%', background: ['#1B365D', '#26507F', '#00B4D8', '#16A34A', '#7C3AED'][i] }}>
+                      style={{ width: Math.max(pct, 8) + '%', background: ['#1B365D', '#26507F', '#0097B2', '#00B4D8', '#16A34A', '#7C3AED'][i] }}>
                       {count}
                     </div>
                   </div>
@@ -138,6 +170,9 @@ export default function Recruitment() {
           </div>
         </Card>
       )}
+
+      <CandidateModal candidate={current} onClose={() => setPicked(null)} />
+      <AddCandidateModal open={adding} onClose={() => setAdding(false)} roles={reqs.map((r) => r.role)} />
 
       <Modal open={open} onClose={() => setOpen(false)} title="Raise a requisition" subtitle="Goes to Talent Acquisition for sourcing"
         footer={<>

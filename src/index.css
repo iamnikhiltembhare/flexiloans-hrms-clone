@@ -417,3 +417,9 @@ html.native input, html.native textarea, html.native select { -webkit-user-selec
   .print-area, .print-area * { visibility: visible !important; }
   .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; background: #fff; color: #111; }
 }
+
+/* Goal progress slider: a filled track like the progress bars. */
+.range-progress { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px; cursor: pointer;
+  background: linear-gradient(to right, #00B4D8 var(--fill, 0%), rgb(var(--c-line, 229 231 235)) var(--fill, 0%)); }
+.range-progress::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 999px; background: #fff; border: 3px solid #00B4D8; box-shadow: 0 1px 3px rgb(0 0 0 / .25); }
+.range-progress::-moz-range-thumb { width: 12px; height: 12px; border-radius: 999px; background: #fff; border: 3px solid #00B4D8; }

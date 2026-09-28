@@ -8,6 +8,7 @@ import { BRAND } from '../lib/brand.js'
 import { createdAccounts, addCreatedAccount } from '../lib/localAccounts.js'
 import { answerWithRules } from '../lib/assistant/rules.js'
 import { computeRun } from '../lib/hr/payroll.js'
+import { prepare } from '../../server/rules.js'
 import { useAuth } from './AuthContext.jsx'
 import ToastStack from '../components/Toast.jsx'
 
@@ -216,6 +217,22 @@ export function DataProvider({ children }) {
   }, [dispatch, me])
   const payPayroll = useCallback((month) => dispatch('payroll.pay', { month, paidAt: new Date().toISOString(), by: me }), [dispatch, me])
 
+  // Recruitment, onboarding and appraisals: the payload is built by the same
+  // rules the server applies (server/rules.js is pure), so a mistake shows
+  // straight away in both modes and the server simply repeats the check.
+  // Returns { ok, result } or { ok: false, error }.
+  const hrAction = useCallback((type, payload) => {
+    const actor = { id: user?.id, name: me, username: user?.username, perms: user?.perms || [] }
+    const { collection } = ACTIONS[type]
+    try {
+      const clean = prepare(type, payload, actor, stateRef.current[collection] || [], stateRef.current)
+      return { ok: true, result: dispatch(type, clean) }
+    } catch (err) {
+      toast('Not saved', err.message, 'error')
+      return { ok: false, error: err.message }
+    }
+  }, [dispatch, toast, me, user])
+
   const addRegularisation = useCallback((r) => dispatch('regularisation.add', { request: {
     id: nextSerial(stateRef.current.regularisations, 'RG-', 1000),
     empId: user?.id, employee: me, status: 'Pending', appliedOn: today(), ...r,
@@ -269,12 +286,12 @@ export function DataProvider({ children }) {
     addAnnouncement, addDocument, advanceCandidate, addRequisition,
     notify, markRead, markAllRead, clearNotifications,
     unread: state.notifications.filter((n) => !n.read).length,
-    toast, punchToggle, runPayroll, payPayroll, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    toast, punchToggle, runPayroll, payPayroll, hrAction, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
     askAssistant, loadChat, saveChat, clearChat, runAction, listAudit,
     ready, loadError, refresh, online: API_MODE,
   }), [state, addEmployee, addLeaveRequest, setLeaveStatus, addTicket, setTicketStatus,
     addAnnouncement, addDocument, advanceCandidate, addRequisition, notify, markRead,
-    markAllRead, clearNotifications, toast, punchToggle, runPayroll, payPayroll, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
+    markAllRead, clearNotifications, toast, punchToggle, runPayroll, payPayroll, hrAction, addRegularisation, decideRegularisation, resetData, listUsers, createUser,
     askAssistant, loadChat, saveChat, clearChat, runAction, listAudit, ready, loadError, refresh])
 
   return (

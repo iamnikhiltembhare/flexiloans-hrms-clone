@@ -5,6 +5,7 @@
 import { PERMS } from '../src/data/accounts.js'
 import { checkBalance } from '../src/lib/hr/leave.js'
 import { computeRun, monthLabel } from '../src/lib/hr/payroll.js'
+import { INTERVIEW_ROUNDS, INTERVIEW_MODES, RECOMMENDATIONS, CANDIDATE_SOURCES, POLICIES, COMPETENCIES, candidateRating, onboardingTasks } from '../src/lib/hr/people.js'
 import { CANDIDATE_STAGES, REGULARISATION_TYPES, TICKET_DESKS, TICKET_STATUSES, needsAdminApproval, ticketClosed, nextSerial, today, newNotificationId } from '../src/lib/actions.js'
 
 export class HttpError extends Error {
@@ -26,6 +27,22 @@ function uniqueId(list, proposed, pattern, prefix, floor) {
 }
 
 const find = (list, id, what) => list.find((x) => x.id === id) || bad(what + ' ' + id + ' does not exist')
+const candidate = (list, name) => list.find((c) => c.name === name) || bad('No candidate named ' + name)
+/** An appraisal the actor may edit: their own, or anyone's for HR. */
+function appraisal(list, id, actor) {
+  const a = find(list, id, 'Appraisal')
+  if (a.empId !== actor.id && !actor.perms.includes(PERMS.HR_PEOPLE)) forbidden('You can only change your own appraisal.')
+  return a
+}
+function review(r = {}, who) {
+  const rating = Number(r.rating)
+  if (!(rating >= 1 && rating <= 5)) bad(who + ' rating must be from 1 to 5')
+  const competencies = Object.fromEntries(COMPETENCIES.map((c) => {
+    const v = Number(r.competencies?.[c])
+    return [c, Number.isInteger(v) && v >= 1 && v <= 5 ? v : bad('Rate ' + c + ' from 1 to 5')]
+  }))
+  return { rating: Math.round(rating * 10) / 10, competencies, comments: required(r.comments, who + ' comments', 1500), at: new Date().toISOString() }
+}
 
 /**
  * Validate an action against the collection it will change.
@@ -150,6 +167,115 @@ export function prepare(type, payload, actor, current, extra = {}) {
       return { now, date, mode: p.mode === 'Remote' ? 'Remote' : 'Office' }
     }
 
+    // --- recruitment -------------------------------------------------------
+    case 'candidate.add': {
+      const c = p.candidate || {}
+      const name = required(c.name, 'Candidate name', 80)
+      if (current.some((x) => x.name.toLowerCase() === name.toLowerCase())) bad(name + ' is already in the pipeline')
+      return { candidate: {
+        name, role: required(c.role, 'Role', 120), email: str(c.email, 120), phone: str(c.phone, 30),
+        source: oneOf(c.source, CANDIDATE_SOURCES, 'Careers Page'), experience: str(c.experience, 20),
+        resume: str(c.resume, 160), stage: 'Shortlisted', status: 'Active', rating: null,
+        applied: today(), addedBy: actor.name, interviews: [], evaluations: [],
+      } }
+    }
+    case 'candidate.schedule': {
+      const c = candidate(current, p.name)
+      const iv = p.interview || {}
+      const at = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(iv.at) ? iv.at : bad('Pick a date and time for the interview')
+      return { name: c.name, interview: {
+        id: 'iv-' + Date.now().toString(36), round: oneOf(iv.round, INTERVIEW_ROUNDS, INTERVIEW_ROUNDS[0]), at,
+        interviewer: required(iv.interviewer, 'Interviewer', 80), mode: oneOf(iv.mode, INTERVIEW_MODES, INTERVIEW_MODES[0]),
+        status: 'Scheduled', by: actor.name,
+      } }
+    }
+    case 'candidate.evaluate': {
+      const c = candidate(current, p.name)
+      const e = p.evaluation || {}
+      const score = (v, f) => (Number.isInteger(v) && v >= 1 && v <= 5 ? v : bad(f + ' must be a score from 1 to 5'))
+      const evaluation = {
+        round: oneOf(e.round, INTERVIEW_ROUNDS, INTERVIEW_ROUNDS[0]),
+        technical: score(e.technical, 'Technical'), communication: score(e.communication, 'Communication'), culture: score(e.culture, 'Culture fit'),
+        recommendation: oneOf(e.recommendation, RECOMMENDATIONS) || bad('Pick a recommendation'),
+        notes: str(e.notes, 600), by: actor.name, at: new Date().toISOString(),
+      }
+      return { name: c.name, evaluation, rating: candidateRating([...(c.evaluations || []), evaluation]) }
+    }
+    case 'candidate.decide': {
+      const c = candidate(current, p.name)
+      if (c.status === 'Hired' || c.status === 'Rejected') bad(c.name + ' is already ' + c.status.toLowerCase())
+      const decision = oneOf(p.decision, ['Hired', 'Rejected']) || bad('Decision must be Hired or Rejected')
+      if (decision === 'Hired' && !(c.evaluations || []).length) bad('Record at least one interview evaluation before hiring')
+      return { name: c.name, decision, reason: str(p.reason, 300), by: actor.name, at: new Date().toISOString() }
+    }
+
+    // --- onboarding --------------------------------------------------------
+    case 'onboarding.start': {
+      const r = p.record || {}
+      const startDate = isoDate(r.startDate, 'Start date')
+      const name = required(r.name, 'Name', 80)
+      if (current.some((x) => x.name === name && x.status !== 'Completed')) bad(name + ' already has onboarding in progress')
+      const role = required(r.role, 'Role', 120)
+      const department = str(r.department, 60)
+      return { record: {
+        id: uniqueId(current, r.id, /^OB-\d+$/, 'OB-', 1000), name, role, department, startDate,
+        empId: str(r.empId, 20) || null, candidate: str(r.candidate, 80) || null,
+        tasks: onboardingTasks(role, department, startDate), policies: POLICIES, acknowledgements: [],
+        status: 'In progress', startedBy: actor.name, createdAt: new Date().toISOString(),
+      } }
+    }
+    case 'onboarding.task': {
+      const r = find(current, p.id, 'Onboarding')
+      const t = r.tasks.find((x) => x.id === p.taskId) || bad('No such task')
+      const hr = actor.perms.includes(PERMS.HR_PEOPLE)
+      const joiner = r.empId && r.empId === actor.id
+      if (!hr && !(joiner && t.owner === 'New joiner')) forbidden(hr ? '' : 'You can only tick your own onboarding tasks.')
+      return { id: r.id, taskId: t.id, done: !!p.done, by: actor.name, at: new Date().toISOString() }
+    }
+    case 'onboarding.ack': {
+      const r = find(current, p.id, 'Onboarding')
+      if (r.empId !== actor.id) forbidden('Only the new joiner can acknowledge policies.')
+      const policy = oneOf(p.policy, r.policies || POLICIES) || bad('Unknown policy')
+      return { id: r.id, policy, at: new Date().toISOString() }
+    }
+
+    // --- appraisals ---------------------------------------------------------
+    case 'appraisal.goal': {
+      const a = appraisal(current, p.id, actor)
+      if (!['Goal setting', 'Self review'].includes(a.status)) bad('Goals are locked once the self review is submitted')
+      const g = p.goal || {}
+      const weight = Number(g.weight)
+      if (!Number.isInteger(weight) || weight < 5 || weight > 100) bad('Weight must be a whole number from 5 to 100')
+      const existing = a.goals.find((x) => x.id === g.id)
+      if (!existing && a.goals.length >= 8) bad('A cycle can have at most 8 goals')
+      return { id: a.id, goal: {
+        id: existing ? existing.id : 'g' + (a.goals.length + 1) + '-' + Date.now().toString(36),
+        title: required(g.title, 'Goal', 160), weight, due: isoDate(g.due, 'Due date'), progress: existing ? existing.progress : 0,
+      } }
+    }
+    case 'appraisal.progress': {
+      const a = appraisal(current, p.id, actor)
+      if (a.status === 'Completed') bad('This appraisal is completed')
+      const g = a.goals.find((x) => x.id === p.goalId) || bad('No such goal')
+      const progress = Number(p.progress)
+      if (!Number.isInteger(progress) || progress < 0 || progress > 100) bad('Progress must be 0 to 100')
+      return { id: a.id, goalId: g.id, progress }
+    }
+    case 'appraisal.self': {
+      const a = appraisal(current, p.id, actor)
+      if (a.empId !== actor.id) forbidden('Only the employee submits their self review.')
+      if (!['Goal setting', 'Self review'].includes(a.status)) bad('The self review is already submitted')
+      const total = a.goals.reduce((s, g) => s + g.weight, 0)
+      if (total !== 100) bad('Goal weights add up to ' + total + '%; make them 100% before submitting')
+      return { id: a.id, self: review(p.self, 'Self') }
+    }
+    case 'appraisal.review': {
+      const a = find(current, p.id, 'Appraisal')
+      if (a.empId === actor.id) forbidden('You cannot review your own appraisal.')
+      if (a.status !== 'Manager review') bad(a.employee + ' has not submitted a self review yet')
+      return { id: a.id, manager: { ...review(p.manager, 'Manager'), by: actor.name } }
+    }
+
     case 'payroll.run': {
       const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(p.month) ? p.month : bad('Pick a month (YYYY-MM)')
       const now = new Date()
@@ -231,7 +357,9 @@ export function visibleTo(actor, collection, value) {
   const can = (perm) => actor.perms.includes(perm)
   switch (collection) {
     case 'leaveRequests':
-    case 'regularisations': return can(PERMS.HR_PEOPLE) ? value : value.filter((r) => r.empId === actor.id)
+    case 'regularisations':
+    case 'onboarding':
+    case 'appraisals': return can(PERMS.HR_PEOPLE) ? value : value.filter((r) => r.empId === actor.id)
     case 'payroll': {
       if (can(PERMS.HR_PEOPLE)) return value
       // Employees see only their own payslips, and only once released.
@@ -270,6 +398,20 @@ export function fanOut(type, payload, actor, before) {
     case 'ticket.setStatus': {
       const t = before.find((x) => x.id === payload.id)
       return [{ to: (u) => u.id === t.raisedById && u.username !== actor.username, notification: { title: t.id + ' is now ' + payload.status, detail: t.subject, to: '/', kind: 'info' } }]
+    }
+    case 'candidate.decide':
+      return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: payload.name + ' ' + (payload.decision === 'Hired' ? 'hired' : 'not selected'), detail: 'Decision by ' + actor.name, to: payload.decision === 'Hired' ? '/onboarding' : '/recruitment', kind: 'task' } }]
+    case 'onboarding.start': {
+      const r = payload.record
+      return r.empId ? [{ to: (u) => u.id === r.empId, notification: { title: 'Welcome aboard - your onboarding has started', detail: r.tasks.length + ' tasks and ' + r.policies.length + ' policies to acknowledge', to: '/onboarding', kind: 'task' } }] : []
+    }
+    case 'appraisal.self': {
+      const a = before.find((x) => x.id === payload.id)
+      return [{ to: hasPerm(PERMS.HR_PEOPLE), notification: { title: 'Self review from ' + a.employee, detail: a.cycle + ' - ready for manager review', to: '/performance', kind: 'task' } }]
+    }
+    case 'appraisal.review': {
+      const a = before.find((x) => x.id === payload.id)
+      return [{ to: (u) => u.id === a.empId, notification: { title: 'Your appraisal is complete', detail: a.cycle + ' - rating ' + payload.manager.rating + ' by ' + actor.name, to: '/performance', kind: 'info' } }]
     }
     case 'payroll.pay':
       return [{ to: (u) => u.username !== actor.username, notification: { title: 'Payslip for ' + monthLabel(payload.month) + ' is ready', detail: 'Salary has been processed', to: '/payroll', kind: 'info' } }]

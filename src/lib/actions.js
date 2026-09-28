@@ -39,6 +39,8 @@ export const COLLECTIONS = {
   requisitions: 'shared',
   regularisations: 'shared',
   payroll: 'shared',
+  onboarding: 'shared',
+  appraisals: 'shared',
   documents: 'personal',
   notifications: 'personal',
   punch: 'personal',
@@ -62,10 +64,28 @@ export const ACTIONS = {
   // sent to the server, which computes them itself.
   'payroll.run': { collection: 'payroll', perm: PERMS.HR_PEOPLE, needs: ['employees', 'leaveRequests'], localOnly: ['run', 'payslips'] },
   'payroll.pay': { collection: 'payroll', perm: PERMS.HR_PEOPLE },
+  'candidate.add': { collection: 'candidates', perm: PERMS.HR_HIRING },
+  'candidate.schedule': { collection: 'candidates', perm: PERMS.HR_HIRING },
+  'candidate.evaluate': { collection: 'candidates', perm: PERMS.HR_HIRING },
+  'candidate.decide': { collection: 'candidates', perm: PERMS.HR_HIRING },
+  'onboarding.start': { collection: 'onboarding', perm: PERMS.HR_PEOPLE },
+  // Checked in detail by the server: HR ticks any task, a joiner only their own.
+  'onboarding.task': { collection: 'onboarding', perm: PERMS.SELF },
+  'onboarding.ack': { collection: 'onboarding', perm: PERMS.SELF },
+  'appraisal.goal': { collection: 'appraisals', perm: PERMS.SELF },
+  'appraisal.progress': { collection: 'appraisals', perm: PERMS.SELF },
+  'appraisal.self': { collection: 'appraisals', perm: PERMS.SELF },
+  'appraisal.review': { collection: 'appraisals', perm: PERMS.HR_PEOPLE },
   'notification.add': { collection: 'notifications', perm: PERMS.SELF },
   'notification.read': { collection: 'notifications', perm: PERMS.SELF },
   'notification.readAll': { collection: 'notifications', perm: PERMS.SELF },
   'notification.clear': { collection: 'notifications', perm: PERMS.SELF },
+}
+
+// Onboarding is complete once every task is done and every policy acknowledged.
+const withStatus = (r) => {
+  const done = r.tasks.every((t) => t.done) && (r.acknowledgements || []).length >= (r.policies || []).length
+  return { ...r, status: done ? 'Completed' : 'In progress' }
 }
 
 const REDUCERS = {
@@ -124,6 +144,47 @@ const REDUCERS = {
   }),
   'payroll.pay': (p, { month, paidAt, by }) => ({
     value: { ...p, runs: p.runs.map((r) => (r.month === month ? { ...r, status: 'Paid', paidAt, paidBy: by } : r)) },
+  }),
+
+  // --- recruitment ---
+  'candidate.add': (list, { candidate }) => ({ value: [candidate, ...list], result: candidate.name }),
+  'candidate.schedule': (list, { name, interview }) => ({
+    value: list.map((c) => (c.name === name ? { ...c, interviews: [...(c.interviews || []), interview] } : c)),
+  }),
+  'candidate.evaluate': (list, { name, evaluation, rating }) => ({
+    value: list.map((c) => (c.name !== name ? c : {
+      ...c, rating,
+      evaluations: [...(c.evaluations || []), evaluation],
+      interviews: (c.interviews || []).map((iv) => (iv.round === evaluation.round && iv.status === 'Scheduled' ? { ...iv, status: 'Completed' } : iv)),
+    })),
+  }),
+  'candidate.decide': (list, { name, decision, reason, by, at }) => ({
+    value: list.map((c) => (c.name !== name ? c : { ...c, status: decision, ...(decision === 'Hired' ? { stage: 'Hired' } : {}), decision: { decision, reason, by, at } })),
+    result: decision,
+  }),
+
+  // --- onboarding ---
+  'onboarding.start': (list, { record }) => ({ value: [record, ...list], result: record.id }),
+  'onboarding.task': (list, { id, taskId, done, by, at }) => ({
+    value: list.map((r) => (r.id !== id ? r : withStatus({ ...r, tasks: r.tasks.map((t) => (t.id === taskId ? { ...t, done, doneBy: done ? by : null, doneAt: done ? at : null } : t)) }))),
+  }),
+  'onboarding.ack': (list, { id, policy, at }) => ({
+    value: list.map((r) => (r.id !== id || (r.acknowledgements || []).some((a) => a.policy === policy) ? r
+      : withStatus({ ...r, acknowledgements: [...(r.acknowledgements || []), { policy, at }] }))),
+  }),
+
+  // --- appraisals ---
+  'appraisal.goal': (list, { id, goal }) => ({
+    value: list.map((a) => (a.id !== id ? a : { ...a, goals: a.goals.some((g) => g.id === goal.id) ? a.goals.map((g) => (g.id === goal.id ? { ...g, ...goal } : g)) : [...a.goals, goal] })),
+  }),
+  'appraisal.progress': (list, { id, goalId, progress }) => ({
+    value: list.map((a) => (a.id !== id ? a : { ...a, goals: a.goals.map((g) => (g.id === goalId ? { ...g, progress } : g)) })),
+  }),
+  'appraisal.self': (list, { id, self }) => ({
+    value: list.map((a) => (a.id === id ? { ...a, self, status: 'Manager review' } : a)),
+  }),
+  'appraisal.review': (list, { id, manager }) => ({
+    value: list.map((a) => (a.id === id ? { ...a, manager, status: 'Completed' } : a)),
   }),
 
   'regularisation.add': (list, { request }) => ({ value: [request, ...list], result: request.id }),

@@ -529,3 +529,101 @@ test('work-from-home punches are recorded', async () => {
   const again = await act(emp, 'punch.toggle', { now: '02:00 pm', date: d, mode: 'Office' })
   assert.equal(again.data.state.punch.history[d].mode, 'Remote', 'the first chosen mode of the day is kept')
 })
+
+// --- recruitment, onboarding and appraisals ----------------------------------
+
+test('recruitment: add, schedule, score and hire a candidate; employees are kept out', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const candidate = { name: 'Priya Nair', role: 'Credit Analyst', source: 'Referral', stage: 'Hired', status: 'Hired' }
+  assert.equal((await act(emp, 'candidate.add', { candidate })).status, 403)
+  const added = await act(hr, 'candidate.add', { candidate })
+  assert.equal(added.status, 200)
+  const c = added.data.state.candidates.find((x) => x.name === 'Priya Nair')
+  assert.equal(c.stage, 'Shortlisted', 'stage and status are set by the server')
+  assert.equal(c.status, 'Active')
+  assert.equal((await act(hr, 'candidate.add', { candidate })).status, 400, 'no duplicates')
+
+  assert.equal((await act(hr, 'candidate.schedule', { name: 'Priya Nair', interview: { round: 'Tech Screen', at: 'soon', interviewer: 'Rahul Patel' } })).status, 400)
+  const booked = await act(hr, 'candidate.schedule', { name: 'Priya Nair', interview: { round: 'Tech Screen', at: '2026-10-05T11:00', interviewer: 'Rahul Patel', mode: 'Phone' } })
+  assert.equal(booked.data.state.candidates.find((x) => x.name === 'Priya Nair').interviews[0].status, 'Scheduled')
+
+  assert.equal((await act(hr, 'candidate.decide', { name: 'Priya Nair', decision: 'Hired' })).status, 400, 'no hire without a scorecard')
+  assert.equal((await act(hr, 'candidate.evaluate', { name: 'Priya Nair', evaluation: { round: 'Tech Screen', technical: 9, communication: 4, culture: 4, recommendation: 'Hire' } })).status, 400, 'scores are 1-5')
+  const scored = await act(hr, 'candidate.evaluate', { name: 'Priya Nair', evaluation: { round: 'Tech Screen', technical: 5, communication: 4, culture: 3, recommendation: 'Hire' }, rating: 1 })
+  const s = scored.data.state.candidates.find((x) => x.name === 'Priya Nair')
+  assert.equal(s.rating, 4, 'the rating is computed server-side')
+  assert.equal(s.interviews[0].status, 'Completed', 'the scored round is closed')
+
+  const hired = await act(hr, 'candidate.decide', { name: 'Priya Nair', decision: 'Hired', reason: 'Strong analytics' })
+  assert.equal(hired.status, 200)
+  assert.equal(hired.data.state.candidates.find((x) => x.name === 'Priya Nair').stage, 'Hired')
+  assert.equal((await act(hr, 'candidate.decide', { name: 'Priya Nair', decision: 'Rejected' })).status, 400, 'decisions are final')
+  assert.deepEqual((await call('GET', '/api/state', { token: emp })).data.candidates, [])
+})
+
+test('onboarding: HR starts a checklist, the joiner ticks only their own tasks and acknowledges policies', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const joiner = await login('rahul.patel', EMP[1])
+  assert.equal((await act(emp, 'onboarding.start', { record: { name: 'X', role: 'Y', startDate: '2026-10-01' } })).status, 403)
+
+  const mine = (await call('GET', '/api/state', { token: joiner })).data.onboarding
+  assert.equal(mine.length, 1, 'the joiner sees only their own record')
+  const rec = mine[0]
+  assert.equal((await call('GET', '/api/state', { token: emp })).data.onboarding.length, 0)
+  const hrTask = rec.tasks.find((t) => t.owner === 'IT' && !t.done)
+  const myTask = rec.tasks.find((t) => t.owner === 'New joiner' && !t.done)
+  assert.equal((await act(joiner, 'onboarding.task', { id: rec.id, taskId: hrTask.id, done: true })).status, 403, 'IT tasks are not the joiner\'s')
+  assert.equal((await act(joiner, 'onboarding.task', { id: rec.id, taskId: myTask.id, done: true })).status, 200)
+  assert.equal((await act(emp, 'onboarding.ack', { id: rec.id, policy: 'POSH policy' })).status, 403, 'only the joiner acknowledges')
+  const acked = await act(joiner, 'onboarding.ack', { id: rec.id, policy: 'Information security and acceptable use' })
+  assert.equal(acked.data.state.onboarding[0].acknowledgements.length, 3)
+  assert.equal((await act(hr, 'onboarding.task', { id: rec.id, taskId: hrTask.id, done: true })).status, 200, 'HR can tick any task')
+
+  const started = await act(hr, 'onboarding.start', { record: { name: 'Priya Nair', role: 'Data Engineer', department: 'Engineering', startDate: '2026-10-12' } })
+  assert.equal(started.status, 200)
+  const made = started.data.state.onboarding.find((r) => r.name === 'Priya Nair')
+  assert.match(made.id, /^OB-\d+$/)
+  assert.ok(made.tasks.some((t) => /developer image/.test(t.task)), 'tech roles get engineering tasks')
+  assert.equal((await act(hr, 'onboarding.start', { record: { name: 'Priya Nair', role: 'Data Engineer', startDate: '2026-10-12' } })).status, 400, 'one active record per person')
+})
+
+test('appraisals: goals, self review, then someone else completes the review', async () => {
+  const { call, login, act } = setup()
+  const hr = await login(...HR)
+  const emp = await login(...EMP)
+  const state = (await call('GET', '/api/state', { token: emp })).data
+  assert.equal(state.appraisals.length, 1, 'employees see only their own appraisal')
+  const a = state.appraisals[0]
+  const other = (await call('GET', '/api/state', { token: hr })).data.appraisals.find((x) => x.empId !== a.empId && x.status === 'Self review')
+  assert.equal((await act(emp, 'appraisal.progress', { id: other.id, goalId: other.goals[0].id, progress: 90 })).status, 403, 'not someone else\'s')
+
+  assert.equal(a.status, 'Self review', 'the demo employee starts at self review')
+  {
+    const added = await act(emp, 'appraisal.goal', { id: a.id, goal: { title: 'Mentor two interns', weight: 10, due: '2026-12-31' } })
+    assert.equal(added.status, 200)
+    assert.equal((await act(emp, 'appraisal.self', { id: a.id, self: { rating: 4, comments: 'Good half', competencies: { 'Customer focus': 4, Execution: 4, Collaboration: 4, Ownership: 4, Communication: 4 } } })).status, 400, 'weights must total 100')
+    const g = added.data.state.appraisals[0].goals.find((x) => x.title === 'Mentor two interns')
+    await act(emp, 'appraisal.goal', { id: a.id, goal: { ...g, weight: 5 } })
+    await act(emp, 'appraisal.goal', { id: a.id, goal: { ...a.goals[0], weight: 35 } })
+    assert.equal((await act(emp, 'appraisal.self', { id: a.id, self: { rating: 4, comments: 'Good half', competencies: { Execution: 4 } } })).status, 400, 'every competency is rated')
+    const self = await act(emp, 'appraisal.self', { id: a.id, self: { rating: 4.2, comments: 'Good half', competencies: { 'Customer focus': 4, Execution: 5, Collaboration: 4, Ownership: 4, Communication: 3 } } })
+    assert.equal(self.status, 200, self.data.error)
+    assert.equal(self.data.state.appraisals[0].status, 'Manager review')
+  }
+
+  const hrUser = (await call('GET', '/api/auth/me', { token: hr })).data.user
+  const own = (await call('GET', '/api/state', { token: hr })).data.appraisals.find((x) => x.empId === hrUser.id)
+  const review = { rating: 4, comments: 'Solid delivery', competencies: { 'Customer focus': 4, Execution: 4, Collaboration: 4, Ownership: 4, Communication: 4 } }
+  assert.equal((await act(hr, 'appraisal.review', { id: own.id, manager: review })).status, 403, 'nobody reviews themselves')
+  assert.equal((await act(emp, 'appraisal.review', { id: a.id, manager: review })).status, 403)
+  const done = await act(hr, 'appraisal.review', { id: a.id, manager: review })
+  assert.equal(done.status, 200, done.data.error)
+  const after = (await call('GET', '/api/state', { token: emp })).data
+  assert.equal(after.appraisals[0].status, 'Completed')
+  assert.equal(after.appraisals[0].manager.by, hrUser.name)
+  assert.match(after.notifications[0].title, /appraisal is complete/)
+})
