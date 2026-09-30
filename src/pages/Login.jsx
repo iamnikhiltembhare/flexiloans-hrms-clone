@@ -4,22 +4,11 @@ import { User, Lock, Eye, EyeOff, CalendarCheck, CalendarDays, Wallet, Smartphon
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
 import { useParallaxScene } from '../lib/motion.js'
-import { ACCOUNTS, ROLES, DEMO_PASSWORDS, EMPLOYEE_PASSWORD } from '../data/accounts.js'
-import { BRAND, IS_PUBLIC_DEMO } from '../lib/brand.js'
-import { API_MODE, IS_TEST_BUILD } from '../lib/api.js'
-import { TEST_ACCOUNTS, TEST_PASSWORDS } from '../data/testAccounts.js'
-import TestBanner from '../components/TestBanner.jsx'
+import { BRAND } from '../lib/brand.js'
 import { ThemeToggle } from '../components/ThemeToggle.jsx'
 
-// Quick-fill logins: test users in a test build, demo users in the offline
-// demo, none in production (both conditions are build-time constants, so the
-// passwords are stripped from any build that does not show them).
-const QUICK_LOGINS = IS_TEST_BUILD
-  ? { title: 'Test build - test logins', list: TEST_ACCOUNTS, passwords: TEST_PASSWORDS }
-  : !API_MODE
-    ? { title: 'Demo build - test logins', list: ACCOUNTS, passwords: DEMO_PASSWORDS,
-        note: 'Anyone in the People directory can also sign in as firstname.lastname with ' + EMPLOYEE_PASSWORD + '.' }
-    : null
+// The sign-in page looks the same in every build: no demo or test notices and
+// no sample logins. Credentials are shared with testers separately.
 
 export default function Login() {
   const { login, user } = useAuth()
@@ -42,8 +31,6 @@ export default function Login() {
     navigate('/', { replace: true })
   }
 
-  const fill = (u, p) => { setUsername(u); setPassword(p); setError('') }
-
   // Already signed in (for example the app was reopened on this screen).
   if (user) return <Navigate to="/" replace />
 
@@ -51,7 +38,6 @@ export default function Login() {
     <div className="min-h-screen bg-surface lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
     <BrandPanel />
     <div ref={scene} className="scene min-h-screen relative overflow-hidden bg-surface flex items-center justify-center px-4">
-      <TestBanner floating />
       <div className="login-theme absolute right-4 z-20"><ThemeToggle /></div>
       {/* Parallax backdrop: three depth layers that track the pointer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -79,15 +65,6 @@ export default function Login() {
           <h1 className="text-[28px] font-bold tracking-tight text-navy">Welcome back</h1>
           <p className="text-[13.5px] text-muted mt-1">Sign in to your {BRAND.company} workspace.</p>
         </div>
-
-        {IS_PUBLIC_DEMO && (
-          <div className="mb-5 rounded-card border-l-[3px] border-[#D97706] bg-[rgba(217,119,6,0.08)] px-3.5 py-2.5">
-            <p className="text-[12px] text-body">
-              <strong className="text-navy">Demonstration build.</strong> A portfolio prototype with
-              fabricated data. The sign-in below is not real authentication.
-            </p>
-          </div>
-        )}
 
         <form onSubmit={submit} className="space-y-3">
           <div className="relative">
@@ -123,23 +100,6 @@ export default function Login() {
 
         <p className="mt-8 text-center text-[12px] text-muted lg:hidden">{BRAND.poweredBy}</p>
 
-        {QUICK_LOGINS && (
-        <div className="mt-6 rounded-card border border-line bg-canvas/70 backdrop-blur-sm p-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-2">{QUICK_LOGINS.title}</p>
-          {QUICK_LOGINS.list.map((a) => (
-            <button key={a.username} type="button" onClick={() => fill(a.username, QUICK_LOGINS.passwords[a.username])}
-              className="lift w-full text-left rounded-lg px-2.5 py-2 hover:bg-surface hover:shadow-[0_6px_16px_-10px_rgba(27,54,93,.5)]">
-              <span className="flex items-center justify-between gap-2">
-                <span className="text-[12px] font-medium text-navy">{ROLES[a.role].label}</span>
-                <span className="text-[10px] font-mono text-muted">{a.username}</span>
-              </span>
-              <span className="block text-[10px] text-muted mt-0.5">{ROLES[a.role].description}</span>
-            </button>
-          ))}
-          <p className="text-[10px] text-faint mt-2 px-2.5">Tap a row to fill the form.</p>
-          {QUICK_LOGINS.note && <p className="text-[10px] text-faint mt-1 px-2.5">{QUICK_LOGINS.note}</p>}
-        </div>
-        )}
       </div>
     </div>
     </div>

@@ -12,7 +12,7 @@ export const BRAND = IS_PUBLIC_DEMO
       company: 'Northbridge Financial',
       legalEntity: 'Northbridge Financial Services Pvt Ltd',
       emailDomain: 'northbridge.example',
-      poweredBy: 'Demo build',
+      poweredBy: 'Northbridge Financial HR portal',
     }
   : {
       word1: 'FLEXI',
