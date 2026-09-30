@@ -4,6 +4,7 @@ import { PERMS } from './data/accounts.js'
 import Layout from './components/Layout.jsx'
 
 import Login from './pages/Login.jsx'
+import Recover from './pages/Recover.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Employees from './pages/Employees.jsx'
 import EmployeeDetail from './pages/EmployeeDetail.jsx'
@@ -48,6 +49,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/recover" element={<Recover />} />
       <Route element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Dashboard />} />
 

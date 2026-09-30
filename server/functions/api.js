@@ -19,6 +19,8 @@ export default async (req) => {
     secret,
     // Optional: with a key the assistant uses Claude, otherwise the built-in engine.
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    // Account recovery: message providers and link address (see delivery.js).
+    env: process.env,
     allowedOrigins: process.env.HRMS_ALLOWED_ORIGINS
       ? process.env.HRMS_ALLOWED_ORIGINS.split(',').map((s) => s.trim())
       : undefined,

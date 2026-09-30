@@ -187,6 +187,43 @@ own rate limits; when it returns 429 the assistant falls back to the
 built-in engine for that message. For steady Claude answers, add your own
 `ANTHROPIC_API_KEY` (scope: Functions) on the API site and redeploy it.
 
+## Account recovery (forgot username or password)
+
+The sign-in page links to a recovery flow: the person gives their username,
+work email or registered mobile, receives a 6-digit code by email or SMS (email
+also carries a one-time link), and then sees their username and can set a new
+password and, if they like, a new username. Signed in, **My Profile > Security**
+changes the password and verifies a mobile number for recovery.
+
+Codes and links are sent only when a provider is configured on the API site
+(scope *Functions*, then redeploy). A channel without settings is simply not
+offered; with neither, the screen tells people to contact HR.
+
+| Setting | For |
+|---|---|
+| `RESEND_API_KEY`, `MAIL_FROM` (e.g. `FlexiLoans HRMS <hr-noreply@flexiloans.com>`) | Email codes, reset links and change notices, via [Resend](https://resend.com) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` (an E.164 number or sender) | SMS codes and notices, via Twilio |
+| `HRMS_APP_URL` | Web address used in reset links (default: the live site) |
+| `HRMS_TEST_APP_URL` | Same, for the test environment (optional) |
+
+For India, SMS to Indian numbers needs a DLT-registered sender and template;
+register those with the provider before switching SMS on.
+
+The **test environment** never sends real messages unless providers are set:
+codes land in an outbox that the test super admin reads in **System Admin >
+Message outbox** (entries vanish after an hour). Locally, `HRMS_DEV_OUTBOX=true
+npm run server` does the same for production data - never set it on a real
+deployment.
+
+Safeguards: codes are 6 digits from a secure random source and links 256 random
+bits; only keyed hashes are stored. Codes expire in 10 minutes, links in 30,
+the reset step in 15; each works once and a code allows 5 tries. Starting
+recovery gives the same answer whether or not an account exists. Requests are
+rate-limited per identifier, account and address, with a 60-second resend wait
+and a 1-hour recovery lock after 10 wrong codes. A reset ends every existing
+session, clears the sign-in lock, and the person is told by email, SMS and an
+in-app notification. Every step is in the audit log without any secret.
+
 ## Android app
 
 Capacitor wraps the full-stack build into a native Android app

@@ -8,6 +8,7 @@ import { INR } from '../data/mock.js'
 import { balancesFor } from '../lib/hr/leave.js'
 import { monthLabel } from '../lib/hr/payroll.js'
 import { BRAND } from '../lib/brand.js'
+import SecuritySettings from '../components/SecuritySettings.jsx'
 
 export default function Profile() {
   const { user } = useAuth()
@@ -63,7 +64,7 @@ export default function Profile() {
         </div>
       </Card>
 
-      <Tabs tabs={['Personal', 'Employment', 'Payroll & bank', 'Leave', 'Documents']} active={tab} onChange={setTab} />
+      <Tabs tabs={['Personal', 'Employment', 'Payroll & bank', 'Leave', 'Documents', 'Security']} active={tab} onChange={setTab} />
 
       {tab === 'Personal' && (
         <Card title="Personal information">
@@ -80,6 +81,8 @@ export default function Profile() {
           </div>
         </Card>
       )}
+
+      {tab === 'Security' && <SecuritySettings />}
 
       {tab === 'Employment' && (
         <Card title="Employment information">

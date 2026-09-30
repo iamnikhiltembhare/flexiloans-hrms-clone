@@ -9,6 +9,7 @@ import { createdAccounts, addCreatedAccount } from '../lib/localAccounts.js'
 import { answerWithRules } from '../lib/assistant/rules.js'
 import { computeRun } from '../lib/hr/payroll.js'
 import { prepare } from '../../server/rules.js'
+import { passwordProblem } from '../lib/passwords.js'
 import { useAuth } from './AuthContext.jsx'
 import ToastStack from '../components/Toast.jsx'
 
@@ -266,7 +267,8 @@ export function DataProvider({ children }) {
     }
     const username = form.username.trim().toLowerCase()
     if (!/^[a-z][a-z0-9._-]{2,39}$/.test(username)) throw new Error('Username must be 3-40 characters: lowercase letters, numbers, dots, dashes or underscores, starting with a letter')
-    if (form.password.length < 8 || !/[a-z]/i.test(form.password) || !/\d/.test(form.password)) throw new Error('The password needs at least 8 characters, with letters and numbers')
+    const weak = passwordProblem(form.password, { username, name: form.name })
+    if (weak) throw new Error(weak)
     const taken = [...ALL_ACCOUNTS, ...createdAccounts()].some((a) => a.username === username)
     if (taken) throw new Error('The username ' + username + ' is already taken')
     const id = nextSerial(stateRef.current.employees, 'FL', 1000)

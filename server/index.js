@@ -6,6 +6,10 @@
 //   HRMS_DB              path to the SQLite file
 //   HRMS_TOKEN_SECRET    32+ random characters; required in production
 //   HRMS_ALLOWED_ORIGINS comma-separated extra origins allowed by CORS
+//   HRMS_APP_URL         web app address used in password-reset links
+//   RESEND_API_KEY, MAIL_FROM                          email codes and links
+//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM SMS codes
+//   HRMS_DEV_OUTBOX=true keep messages in an outbox instead (local testing only)
 
 import { createServer } from 'node:http'
 import { randomBytes } from 'node:crypto'
@@ -31,6 +35,7 @@ const handle = createEnvironments({
   secret,
   allowedOrigins: [...DEFAULT_ORIGINS, ...extra],
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  env: process.env,
 })
 
 createServer(async (req, res) => {

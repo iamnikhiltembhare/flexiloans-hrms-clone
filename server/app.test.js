@@ -298,7 +298,7 @@ test('a super admin can create a user who can then sign in', async () => {
   const { call, login } = setup()
   const admin = await login(...ADMIN)
   const hr = await login(...HR)
-  const body = { name: 'Priya Kapoor', username: 'priya.kapoor', role: 'hr', department: 'Human Resources', password: 'Welcome123' }
+  const body = { name: 'Priya Kapoor', username: 'priya.kapoor', role: 'hr', department: 'Human Resources', password: 'Harbour4Tide' }
   assert.equal((await call('POST', '/api/admin/users', { token: hr, body })).status, 403, 'HR cannot create users')
   assert.equal((await call('POST', '/api/admin/users', { token: admin, body: { ...body, password: 'short' } })).status, 400)
   assert.equal((await call('POST', '/api/admin/users', { token: admin, body: { ...body, username: 'nikhil.tembhare' } })).status, 400, 'taken')
@@ -307,7 +307,7 @@ test('a super admin can create a user who can then sign in', async () => {
   assert.equal(made.status, 200)
   assert.ok(made.data.state.employees.some((e) => e.username === 'priya.kapoor'), 'added to the directory')
 
-  const r = await call('POST', '/api/auth/login', { body: { username: 'priya.kapoor', password: 'Welcome123' } })
+  const r = await call('POST', '/api/auth/login', { body: { username: 'priya.kapoor', password: 'Harbour4Tide' } })
   assert.equal(r.status, 200)
   assert.equal(r.data.user.roleKey, 'hr')
   const list = (await call('GET', '/api/admin/users', { token: admin })).data.users
@@ -323,11 +323,11 @@ test('users created by an admin survive the code account sync', async () => {
   const adminApp = createApp({ store, secret: SECRET, accounts: [acct('seed', 'pw-seed'), { ...acct('boss', 'pw-boss'), role: 'super_admin' }] })
   const boss = await (await adminApp(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'boss', password: 'pw-boss' }) }))).json()
   const made = await adminApp(new Request(BASE + '/api/admin/users', { method: 'POST', headers: { Authorization: 'Bearer ' + boss.token },
-    body: JSON.stringify({ name: 'New Person', username: 'new.person', role: 'employee', password: 'Password1' }) }))
+    body: JSON.stringify({ name: 'New Person', username: 'new.person', role: 'employee', password: 'Lantern72x' }) }))
   assert.equal(made.status, 200)
   // A later deploy with a different code account list keeps the admin-made user.
   const v2 = createApp({ store, secret: SECRET, accounts: [acct('seed', 'pw-seed')] })
-  const r = await v2(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'new.person', password: 'Password1' }) }))
+  const r = await v2(new Request(BASE + '/api/auth/login', { method: 'POST', body: JSON.stringify({ username: 'new.person', password: 'Lantern72x' }) }))
   assert.equal(r.status, 200)
   assert.ok(await tok(v1))
 })
@@ -781,4 +781,145 @@ test('leave counts working days and cannot overlap existing leave', async () => 
   const holiday = await act(emp, 'leave.add', { request: { type: 'Privilege Leave', from: '2026-10-02', to: '2026-10-02', reason: 'x' } })
   assert.equal(holiday.status, 400)
   assert.match(holiday.data.error, /holiday/)
+})
+
+// --- account recovery ------------------------------------------------------------
+
+import { outboxDelivery } from './delivery.js'
+import { OTP_TTL_MS } from './recovery.js'
+
+function setupRecovery({ channels } = {}) {
+  const store = sqliteStore(':memory:')
+  const box = outboxDelivery(store)
+  const delivery = channels ? { ...box, channels } : box
+  const handle = createApp({ store, secret: SECRET, delivery, appUrl: 'https://app.test' })
+  let ip = 1
+  const call = async (method, path, { token, body, from } = {}) => {
+    const headers = { 'Content-Type': 'application/json', 'x-forwarded-for': from || '10.0.0.' + ip }
+    if (token) headers.Authorization = 'Bearer ' + token
+    const res = await handle(new Request(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined }))
+    return { status: res.status, data: await res.json().catch(() => null) }
+  }
+  const login = async (username, password) => (await call('POST', '/api/auth/login', { body: { username, password } })).data?.token
+  const lastMessage = async (channel) => (await box.read()).find((m) => m.channel === channel)
+  const codeIn = (m) => m.text.match(/\b(\d{6})\b/)[1]
+  const newIp = () => { ip++ }
+  return { call, login, lastMessage, codeIn, box, newIp, store }
+}
+
+test('recovery: an SMS code resets the password, ends old sessions and tells the person', async () => {
+  const { call, login, lastMessage, codeIn } = setupRecovery()
+  const old = await login(...EMP)
+  assert.equal((await call('GET', '/api/auth/recovery/options')).data.channels.sms, true)
+  const start = await call('POST', '/api/auth/recovery/start', { body: { identifier: '+91 98200 31009', channel: 'sms', purpose: 'password' } })
+  assert.equal(start.status, 200)
+  const sms = await lastMessage('sms')
+  assert.equal(sms.to, '+919820031009', 'sent to the registered mobile')
+  assert.ok(!JSON.stringify(start.data).includes(codeIn(sms)), 'the code is never in the response')
+
+  assert.equal((await call('POST', '/api/auth/recovery/verify', { body: { requestId: start.data.requestId, code: '000000' } })).status, 400)
+  const ok = await call('POST', '/api/auth/recovery/verify', { body: { requestId: start.data.requestId, code: codeIn(sms) } })
+  assert.equal(ok.status, 200)
+  assert.equal(ok.data.username, 'nikhil.tembhare')
+  assert.equal((await call('POST', '/api/auth/recovery/verify', { body: { requestId: start.data.requestId, code: codeIn(sms) } })).status, 400, 'a code works once')
+
+  const weak = await call('POST', '/api/auth/recovery/complete', { body: { ticket: ok.data.ticket, password: 'short1' } })
+  assert.match(weak.data.error, /at least 8/)
+  assert.match((await call('POST', '/api/auth/recovery/complete', { body: { ticket: ok.data.ticket, password: EMP[1] } })).data.error, /not used/, 'not the same password again')
+  const done = await call('POST', '/api/auth/recovery/complete', { body: { ticket: ok.data.ticket, password: 'Monsoon2026ride' } })
+  assert.equal(done.status, 200)
+  assert.equal((await call('POST', '/api/auth/recovery/complete', { body: { ticket: ok.data.ticket, password: 'Another2026ride' } })).status, 400, 'a ticket works once')
+
+  assert.equal((await call('GET', '/api/state', { token: old })).status, 401, 'sessions from before the reset are signed out')
+  assert.equal(await login(...EMP), undefined, 'the old password no longer works')
+  const fresh = await login('nikhil.tembhare', 'Monsoon2026ride')
+  assert.ok(fresh)
+  const me = (await call('GET', '/api/state', { token: fresh })).data
+  assert.match(me.notifications[0].title, /password was changed/)
+  assert.match((await lastMessage('email')).text, /password was changed/, 'an email notice too')
+})
+
+test('recovery: the email link works once, and a forgotten username is recovered and changed', async () => {
+  const { call, login, lastMessage } = setupRecovery()
+  const start = await call('POST', '/api/auth/recovery/start', { body: { identifier: 'Nikhil.Tembhare@flexiloans.com', channel: 'email', purpose: 'both' } })
+  assert.equal(start.status, 200)
+  const mail = await lastMessage('email')
+  const token = mail.text.match(/recover\?token=([\w-]+)/)[1]
+  const opened = await call('POST', '/api/auth/recovery/link', { body: { token } })
+  assert.equal(opened.status, 200)
+  assert.equal(opened.data.username, 'nikhil.tembhare', 'the username is shown only after the link or code proves who you are')
+  assert.equal((await call('POST', '/api/auth/recovery/link', { body: { token } })).status, 400, 'a link works once')
+
+  assert.match((await call('POST', '/api/auth/recovery/complete', { body: { ticket: opened.data.ticket, username: 'hr.manager' } })).data.error, /taken/)
+  const done = await call('POST', '/api/auth/recovery/complete', { body: { ticket: opened.data.ticket, username: 'nikhil.t', password: 'Monsoon2026ride' } })
+  assert.equal(done.status, 200, JSON.stringify(done.data))
+  assert.equal(done.data.username, 'nikhil.t')
+  assert.equal(await login(...EMP), undefined)
+  const t = await login('nikhil.t', 'Monsoon2026ride')
+  assert.ok(t, 'the new username signs in')
+  const state = (await call('GET', '/api/state', { token: t })).data
+  assert.ok(state.leaveRequests.some((r) => r.empId === 'FL1009'), 'the same person and data')
+  assert.match(state.notifications[0].title, /password and username was changed|username and password|password/i)
+  assert.equal(await login('nikhil.tembhare', 'Monsoon2026ride'), undefined, 'the old username is gone, even after the account list syncs')
+})
+
+test('recovery: unknown accounts look the same, codes expire, and guessing is stopped', async () => {
+  const { call, lastMessage, codeIn, box, newIp, store } = setupRecovery()
+  const unknown = await call('POST', '/api/auth/recovery/start', { body: { identifier: 'nobody.here', channel: 'sms' } })
+  const known = await call('POST', '/api/auth/recovery/start', { body: { identifier: 'hr.manager', channel: 'sms' } })
+  assert.equal(unknown.status, known.status)
+  assert.equal(unknown.data.message, known.data.message, 'no hint whether an account exists')
+  assert.equal((await box.read()).length, 1, 'nothing is sent for an unknown account')
+  assert.match((await call('POST', '/api/auth/recovery/verify', { body: { requestId: unknown.data.requestId, code: '123456' } })).data.error, /not right/)
+
+  // Five wrong tries void a code.
+  for (let i = 0; i < 4; i++) await call('POST', '/api/auth/recovery/verify', { body: { requestId: known.data.requestId, code: String(100000 + i) } })
+  const fifth = await call('POST', '/api/auth/recovery/verify', { body: { requestId: known.data.requestId, code: '199999' } })
+  assert.match(fifth.data.error, /can no longer be used/)
+  const code = codeIn(await lastMessage('sms'))
+  assert.equal((await call('POST', '/api/auth/recovery/verify', { body: { requestId: known.data.requestId, code } })).status, 400, 'even the right code is refused after that')
+
+  // Resend wait, then a per-account cap on codes.
+  assert.equal((await call('POST', '/api/auth/recovery/start', { body: { identifier: 'hr.manager', channel: 'sms' } })).status, 429)
+
+  // Expiry: age the stored request past its lifetime.
+  newIp()
+  const again = await call('POST', '/api/auth/recovery/start', { body: { identifier: 'admin', channel: 'email' } })
+  const { hashSecret } = await import('./auth.js')
+  const key = 'recovery/' + hashSecret(again.data.requestId, SECRET)
+  await store.update(key, (cur) => ({ ...cur, expiresAt: Date.now() - 1 }))
+  const late = await call('POST', '/api/auth/recovery/verify', { body: { requestId: again.data.requestId, code: codeIn(await lastMessage('email')) } })
+  assert.match(late.data.error, /expired/)
+  assert.ok(OTP_TTL_MS <= 10 * 60 * 1000)
+
+  // Only hashes are stored.
+  const raw = JSON.stringify(await store.get(key))
+  assert.ok(!raw.includes(codeIn(await lastMessage('email'))), 'the code itself is not stored')
+})
+
+test('recovery: channels that are not configured are not offered; phone verification and password change', async () => {
+  const off = setupRecovery({ channels: { email: true, sms: false } })
+  assert.equal((await off.call('GET', '/api/auth/recovery/options')).data.channels.sms, false)
+  assert.match((await off.call('POST', '/api/auth/recovery/start', { body: { identifier: 'admin', channel: 'sms' } })).data.error, /SMS codes are not available/)
+
+  const { call, login, lastMessage, codeIn } = setupRecovery()
+  const t = await login(...EMP)
+  const sec = (await call('GET', '/api/auth/security', { token: t })).data
+  assert.ok(sec.email.includes('•') && !sec.email.startsWith('nikhil'), 'contact details are masked')
+  const st = await call('POST', '/api/auth/phone/start', { token: t, body: { phone: '98111 22334' } })
+  assert.equal(st.status, 200)
+  const sms = await lastMessage('sms')
+  assert.equal(sms.to, '+919811122334')
+  assert.equal((await call('POST', '/api/auth/phone/confirm', { token: t, body: { requestId: st.data.requestId, code: codeIn(sms) } })).status, 200)
+  assert.equal((await call('GET', '/api/auth/security', { token: t })).data.phoneVerified, true)
+  // The verified number now works for recovery.
+  const rec = await call('POST', '/api/auth/recovery/start', { body: { identifier: '+91 98111 22334', channel: 'sms' } })
+  assert.equal((await lastMessage('sms')).to, '+919811122334')
+  assert.equal(rec.status, 200)
+
+  assert.match((await call('POST', '/api/auth/password', { token: t, body: { current: 'wrong', password: 'Monsoon2026ride' } })).data.error, /current password/)
+  const ch = await call('POST', '/api/auth/password', { token: t, body: { current: EMP[1], password: 'Monsoon2026ride' } })
+  assert.equal(ch.status, 200)
+  assert.equal((await call('GET', '/api/state', { token: t })).status, 401, 'the old session ends')
+  assert.equal((await call('GET', '/api/state', { token: ch.data.token })).status, 200, 'the new token works')
 })

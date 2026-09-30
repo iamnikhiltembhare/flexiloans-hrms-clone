@@ -6,15 +6,18 @@
 //   GET  /api/state           -> everything the signed-in person may see
 //   POST /api/actions         { type, payload } -> { result, state }
 //   POST /api/admin/reset     super admin only: restore the seed data
+//   /api/auth/recovery/*      forgotten username or password (see recovery.js)
 //   GET  /api/health
 
 import { ALL_ACCOUNTS, passwordFor, ROLES, PERMS } from '../src/data/accounts.js'
 import { SEED } from '../src/data/seed.js'
 import { BRAND } from '../src/lib/brand.js'
 import { ACTIONS, COLLECTIONS, applyAction, nextSerial, today } from '../src/lib/actions.js'
-import { hashPassword, verifyPassword, issueToken, readToken } from './auth.js'
+import { hashPassword, verifyPassword, issueToken, readTokenClaims, passwordProblem } from './auth.js'
 import { HttpError, prepare, visibleTo, fanOut, notificationFor } from './rules.js'
 import { createAssistant } from './assistant.js'
+import { createRecovery } from './recovery.js'
+import { providerDelivery } from './delivery.js'
 
 const MAX_BODY = 64 * 1024
 const fail = (msg) => { throw new HttpError(400, msg) }
@@ -54,7 +57,7 @@ const DEMO_LOGINS = ALL_ACCOUNTS.map((a) => ({ ...a, password: passwordFor(a.use
  * password }]. Production uses the demo accounts; the test environment
  * passes its own (see functions/api.js).
  */
-export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, accounts = DEMO_LOGINS, assistant = createAssistant() }) {
+export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, accounts = DEMO_LOGINS, assistant = createAssistant(), delivery = providerDelivery({}), appUrl = null }) {
   if (!secret || secret.length < 32) throw new Error('HRMS_TOKEN_SECRET must be at least 32 characters')
 
   // --- data access --------------------------------------------------------
@@ -62,26 +65,60 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
   // Stored users. The code's account list decides who exists and what their
   // profile says: new accounts are created, removed ones stop working, and
   // profile edits are picked up. Users a super admin created in the app
-  // (source: 'admin') are kept as they are. Password hashes are never
-  // regenerated for an account that already exists.
-  const wanted = new Map(accounts.map((a) => [a.username, a]))
-  const current = (u) => {
-    const a = wanted.get(u.username)
-    return a && a.role === u.role && JSON.stringify(a.profile) === JSON.stringify(u.profile)
-  }
+  // (source: 'admin') are kept as they are. Password hashes, and anything the
+  // person changed themselves (password date, verified recovery mobile), are
+  // never regenerated. A person who chose a new username keeps it: `aliases`
+  // maps the name in the code to the one they use now.
+  const sameAccount = (u, a) => u && u.role === a.role && JSON.stringify(u.profile) === JSON.stringify(a.profile)
   async function users() {
     const existing = (await store.get('users')) || []
+    const aliases = (await store.get('aliases')) || {}
+    const nameOf = (a) => aliases[a.username] || a.username
+    const byName = new Map(existing.map((u) => [u.username, u]))
     const fromCode = existing.filter((u) => u.source !== 'admin')
-    if (fromCode.length === accounts.length && fromCode.every(current)) return existing
-    const hashes = new Map(existing.map((u) => [u.username, u.passwordHash]))
-    const synced = await Promise.all(accounts.map(async (a) => ({
-      username: a.username, role: a.role, profile: a.profile,
-      passwordHash: hashes.get(a.username) ?? await hashPassword(a.password),
-    })))
+    if (fromCode.length === accounts.length && accounts.every((a) => sameAccount(byName.get(nameOf(a)), a))) return existing
+    const synced = await Promise.all(accounts.map(async (a) => {
+      const prev = byName.get(nameOf(a))
+      return {
+        ...(prev || {}), username: nameOf(a), codeName: a.username, role: a.role, profile: a.profile,
+        passwordHash: prev?.passwordHash ?? await hashPassword(a.password),
+      }
+    }))
+    const codeNames = new Set(synced.map((u) => u.username))
     return store.update('users', (cur) => [
       ...synced,
-      ...(cur || []).filter((u) => u.source === 'admin' && !wanted.has(u.username)),
+      ...(cur || []).filter((u) => u.source === 'admin' && !codeNames.has(u.username)),
     ])
+  }
+
+  async function updateUser(username, fn) {
+    await users()
+    await store.update('users', (cur) => (cur || []).map((u) => (u.username === username ? fn(u) : u)))
+  }
+
+  /** Is this username in use, or reserved by an account in the code? */
+  async function takenNames(name) {
+    const list = await users()
+    const aliases = (await store.get('aliases')) || {}
+    return list.some((u) => u.username === name) || accounts.some((a) => a.username === name) || Object.values(aliases).includes(name)
+  }
+
+  /** Give someone a new username and move their personal data with them. */
+  async function renameUser(from, to) {
+    const record = (await users()).find((u) => u.username === from)
+    if (!record) throw new HttpError(404, 'Account not found')
+    if (await takenNames(to)) throw new HttpError(400, 'That username is taken. Try another.')
+    if (record.source !== 'admin') await store.update('aliases', (cur) => ({ ...(cur || {}), [record.codeName || from]: to }))
+    await store.update('users', (cur) => (cur || []).map((u) => (u.username === from ? { ...u, username: to, usernameChangedAt: Date.now() } : u)))
+    const personal = Object.keys(COLLECTIONS).filter((c) => COLLECTIONS[c] === 'personal')
+    for (const key of [...personal.map((c) => keyFor(c, from)), 'chat/' + from]) {
+      const value = await store.get(key)
+      if (value !== undefined && value !== null) {
+        await store.set(key.replace('/' + from, '/' + to), value)
+        await store.set(key, null)
+      }
+    }
+    await store.update(keyFor('employees'), (cur) => (cur ?? clone(SEED.employees)).map((e) => (e.username === from ? { ...e, username: to } : e)))
   }
 
   const read = async (collection, username) =>
@@ -123,13 +160,17 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     try { return text ? JSON.parse(text) : {} } catch { throw new HttpError(400, 'Body must be JSON') }
   }
 
-  async function actorFrom(req) {
+  /** The stored account behind a request's token. Sessions from before a password change are refused. */
+  async function actorRecord(req) {
     const auth = req.headers.get('authorization') || ''
-    const username = readToken(auth.replace(/^Bearer\s+/i, ''), secret)
-    const record = username && (await users()).find((u) => u.username === username)
-    if (!record) throw new HttpError(401, 'Your session has expired. Please sign in again.')
-    return publicUser(record)
+    const claims = readTokenClaims(auth.replace(/^Bearer\s+/i, ''), secret)
+    const record = claims && (await users()).find((u) => u.username === claims.sub)
+    if (!record || claims.v !== (record.sessionVersion || 0)) {
+      throw new HttpError(401, 'Your session has expired. Please sign in again.')
+    }
+    return record
   }
+  const actorFrom = async (req) => publicUser(await actorRecord(req))
 
   // --- routes ------------------------------------------------------------
 
@@ -148,7 +189,7 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
       throw new HttpError(401, 'That username and password do not match an account.')
     }
     if (lock.failures) await store.set(lockKey, { failures: 0, until: 0 })
-    return { token: issueToken(record.username, secret), user: publicUser(record) }
+    return { token: issueToken(record.username, secret, record.sessionVersion || 0), user: publicUser(record) }
   }
 
   async function act(req) {
@@ -291,7 +332,8 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     if (!USERNAME.test(username)) fail('Username must be 3-40 characters: lowercase letters, numbers, dots, dashes or underscores, starting with a letter')
     const role = ROLES[b.role] ? b.role : fail('Pick a role')
     const password = typeof b.password === 'string' ? b.password : ''
-    if (password.length < 8 || !/[a-z]/i.test(password) || !/\d/.test(password)) fail('The password needs at least 8 characters, with letters and numbers')
+    const weak = passwordProblem(password, { username, name })
+    if (weak) fail(weak)
     const passwordHash = await hashPassword(password)
 
     await users() // make sure the seeded accounts exist before checking for clashes
@@ -305,6 +347,7 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
       employmentType: 'Permanent', bloodGroup: 'Not provided', dob: 'Not provided', grade: 'Not provided',
       bank: 'Not provided', pan: 'Not provided', uan: 'Not provided',
     }
+    if (await takenNames(username)) fail('The username ' + username + ' is already taken')
     await store.update('users', (cur) => {
       if ((cur || []).some((u) => u.username === username)) fail('The username ' + username + ' is already taken')
       return [...(cur || []), { username, role, profile, passwordHash, source: 'admin', createdBy: actor.name, createdAt: new Date().toISOString() }]
@@ -320,7 +363,23 @@ export function createApp({ store, secret, allowedOrigins = DEFAULT_ORIGINS, acc
     return { user: accountRow({ username, role, profile, source: 'admin', createdBy: actor.name }), state: await stateFor(actor) }
   }
 
+  // --- account recovery --------------------------------------------------
+
+  const recovery = createRecovery({
+    store, secret, users, updateUser, renameUser, delivery, appUrl, publicUser, takenNames, actorRecord,
+    readBody: body, notify: pushNotification, audit: (actor, action, target, via) => audit(actor, action, target, via),
+  })
+
+  // Test environments keep messages in an outbox; its super admin can read it.
+  async function outbox(req) {
+    await requireAdmin(req)
+    if (delivery.kind !== 'outbox') throw new HttpError(404, 'Not found')
+    return { messages: await delivery.read() }
+  }
+
   const ROUTES = {
+    ...recovery,
+    'GET /api/admin/outbox': outbox,
     'GET /api/health': async () => ({ ok: true, time: new Date().toISOString() }),
     'POST /api/auth/login': login,
     'GET /api/auth/me': async (req) => ({ user: await actorFrom(req) }),

@@ -7,6 +7,7 @@ import Modal from '../components/Modal.jsx'
 import { auditLog, roleMatrix, integrations, systemHealth } from '../data/mock.js'
 import { useApp } from '../context/DataContext.jsx'
 import { downloadCSV } from '../lib/download.js'
+import { API_MODE, IS_TEST_BUILD, api } from '../lib/api.js'
 
 const YesNo = ({ on }) => on
   ? <Check size={14} className="text-[#16A34A]" />
@@ -68,7 +69,9 @@ export default function SystemAdmin() {
         <StatCard label="Integrations" value={integrations.filter((i) => i.status === 'Connected').length + '/' + integrations.length} hint="fully connected" icon={Plug} tone="green" />
       </div>
 
-      <Tabs tabs={['User accounts', 'Role permissions', 'Audit log', 'Platform status']} active={tab} onChange={setTab} />
+      <Tabs tabs={['User accounts', 'Role permissions', 'Audit log', 'Platform status', ...(API_MODE && IS_TEST_BUILD ? ['Message outbox'] : [])]} active={tab} onChange={setTab} />
+
+      {tab === 'Message outbox' && <Outbox />}
 
       {tab === 'User accounts' && (
         <Card bodyClass="p-0">
@@ -252,5 +255,29 @@ function CreateUser({ open, onClose, onCreated }) {
         {err && <p className="text-[12px] text-[#DC2626]">{err}</p>}
       </form>
     </Modal>
+  )
+}
+
+// Test environment only: recovery codes and notices are kept here instead of
+// being sent, so testers can finish the flow. Entries vanish after an hour.
+function Outbox() {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+  const load = useCallback(() => {
+    api('/api/admin/outbox').then((r) => setRows(r.messages)).catch((e) => setError(e.message))
+  }, [])
+  useEffect(() => { load() }, [load])
+  return (
+    <Card title="Message outbox" subtitle="Test environment - SMS and email that would have been sent in the last hour"
+      actions={<button className="btn-secondary" onClick={load}><RefreshCw size={13} /> Refresh</button>} bodyClass="p-0">
+      {error ? <p className="p-4 text-[13px] text-muted">{error}</p> : (
+        <Table empty="No messages in the last hour." rows={rows || []} columns={[
+          { key: 'at', header: 'Sent', mono: true, render: (r) => new Date(r.at).toLocaleTimeString('en-IN') },
+          { key: 'channel', header: 'Channel', render: (r) => <Badge tone={r.channel === 'sms' ? 'blue' : 'purple'}>{r.channel.toUpperCase()}</Badge> },
+          { key: 'to', header: 'To', mono: true },
+          { key: 'text', header: 'Message', render: (r) => <span className="block max-w-xl whitespace-pre-wrap text-[12px]">{r.subject ? r.subject + ' - ' : ''}{r.text}</span> },
+        ]} />
+      )}
+    </Card>
   )
 }

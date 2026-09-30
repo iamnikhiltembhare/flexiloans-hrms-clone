@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { User, Lock, Eye, EyeOff, CalendarCheck, CalendarDays, Wallet, Smartphone, CheckCircle2, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Logo from '../components/Logo.jsx'
@@ -13,7 +13,9 @@ import { ThemeToggle } from '../components/ThemeToggle.jsx'
 export default function Login() {
   const { login, user } = useAuth()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
+  const location = useLocation()
+  // Coming back from account recovery, the username is filled in.
+  const [username, setUsername] = useState(location.state?.username || '')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
@@ -94,8 +96,8 @@ export default function Login() {
         </form>
 
         <ul className="mt-5 space-y-1.5 text-[12px] list-disc pl-5 marker:text-navy/40">
-          <li><a href="#" className="text-navy underline hover:text-cyan">Forgot your password?</a></li>
-          <li><a href="#" className="text-navy underline hover:text-cyan">Forgot your username?</a></li>
+          <li><Link to="/recover?need=password" className="text-navy underline hover:text-cyan">Forgot your password?</Link></li>
+          <li><Link to="/recover?need=username" className="text-navy underline hover:text-cyan">Forgot your username?</Link></li>
         </ul>
 
         <p className="mt-8 text-center text-[12px] text-muted lg:hidden">{BRAND.poweredBy}</p>

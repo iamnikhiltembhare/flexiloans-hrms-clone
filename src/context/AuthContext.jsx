@@ -43,6 +43,13 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // After a password change the server signs out every other session and
+  // hands this one a fresh token.
+  const adoptSession = useCallback((token, u) => {
+    session.set(token)
+    if (u) { setUser(u); saveUser(u) }
+  }, [])
+
   // With a server, re-check the saved session on launch and sign out on any
   // 401, so a revoked or expired token never leaves a half-working app.
   useEffect(() => {
@@ -62,8 +69,8 @@ export function AuthProvider({ children }) {
   }, [user])
 
   const value = useMemo(
-    () => ({ user, login, logout, can, role: user?.roleKey || null }),
-    [user, login, logout, can])
+    () => ({ user, login, logout, can, adoptSession, role: user?.roleKey || null }),
+    [user, login, logout, can, adoptSession])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
